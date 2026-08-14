@@ -1,0 +1,11 @@
+{
+  "id": "complete-pdf-export",
+  "name": "Complete PDF Export",
+  "version": "1.0.0",
+  "minAppVersion": "0.15.0",
+  "description": "Export notes to PDF including frontmatter properties and rendered LaTeX math formulas with customizable page size, orientation, and styles.",
+  "author": "Nico",
+  "authorUrl": "https://github.com/nicodx",
+  "fundingUrl": "https://buymeacoffee.com/nicodx",
+  "isDesktopOnly": true
+}

@@ -1,0 +1,22 @@
+# Node & Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+
+# Obsidian Local Data (never commit local data.json to git repo)
+data.json
+
+# Build & Temporary Files
+dist/
+*.tmp
+*.log
+.DS_Store
+Thumbs.db
+
+# IDE & Editor files
+.idea/
+.vscode/
+*.sublime-workspace
+*.sublime-project

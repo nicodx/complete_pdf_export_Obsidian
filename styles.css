@@ -1,0 +1,69 @@
+/* Estilos para la interfaz de Complete PDF Export en Obsidian */
+
+.obsidian-pdf-export-modal {
+  padding: 10px 15px;
+}
+
+.pdf-export-modal-title {
+  margin-top: 0;
+  margin-bottom: 8px;
+  font-size: 1.4em;
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
+.pdf-export-file-info {
+  background-color: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin-bottom: 16px;
+  font-size: 0.9em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pdf-file-label {
+  color: var(--text-muted);
+}
+
+.pdf-file-name {
+  color: var(--text-accent);
+}
+
+.pdf-export-modal-footer {
+  margin-top: 18px;
+  padding-top: 10px;
+  font-size: 0.88em;
+  text-align: center;
+}
+
+.pdf-donate-link {
+  color: var(--text-accent);
+  text-decoration: none;
+  font-weight: 500;
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background-color: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+}
+
+.pdf-donate-link:hover {
+  text-decoration: underline;
+  background-color: var(--background-modifier-hover);
+}
+
+.pdf-export-modal-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+.pdf-export-btn {
+  font-weight: 600;
+}
