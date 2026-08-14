@@ -46,9 +46,34 @@ interface NodeOsModule {
 function getElectron(): ElectronModule | null {
   try {
     const customWindow = window as unknown as Record<string, unknown>;
-    const requireFn = customWindow['require'];
-    if (typeof requireFn === 'function') {
-      return (requireFn as (moduleName: string) => ElectronModule)('electron') || null;
+    const req = customWindow['require'];
+    if (typeof req === 'function') {
+      const requireFn = req as (moduleName: string) => unknown;
+      
+      let remoteModule: Record<string, unknown> | null = null;
+      try {
+        remoteModule = requireFn('@electron/remote') as Record<string, unknown>;
+      } catch {
+        // Fallback si no está @electron/remote
+      }
+
+      let electronModule: Record<string, unknown> | null = null;
+      try {
+        electronModule = requireFn('electron') as Record<string, unknown>;
+      } catch {
+        // Fallback
+      }
+
+      const remoteFallback = electronModule ? (electronModule['remote'] as Record<string, unknown> | undefined) : undefined;
+      const targetObj = remoteModule || remoteFallback || electronModule;
+
+      if (targetObj) {
+        return {
+          dialog: (targetObj['dialog'] || electronModule?.['dialog']) as ElectronDialog | undefined,
+          BrowserWindow: (targetObj['BrowserWindow'] || electronModule?.['BrowserWindow']) as (new (options: Record<string, unknown>) => ElectronBrowserWindow) | undefined,
+          shell: (targetObj['shell'] || electronModule?.['shell']) as ElectronShell | undefined
+        };
+      }
     }
   } catch (err: unknown) {
     console.error('No se pudo cargar Electron:', err);
@@ -181,7 +206,7 @@ export async function exportNoteToPdfFile(
     if (fsModule) {
       fsModule.writeFileSync(tempFile, fullHtml, 'utf-8');
     } else {
-      throw new Error('Sistema de archivos de Node no disponible.');
+      throw new Error('Sistema de archivos no disponible.');
     }
 
     // 4. Crear ventana headless de Electron para renderizar e imprimir

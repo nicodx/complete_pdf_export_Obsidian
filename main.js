@@ -15493,9 +15493,28 @@ function getMimeType(extension) {
 function getElectron() {
   try {
     const customWindow = window;
-    const requireFn = customWindow["require"];
-    if (typeof requireFn === "function") {
-      return requireFn("electron") || null;
+    const req = customWindow["require"];
+    if (typeof req === "function") {
+      const requireFn = req;
+      let remoteModule = null;
+      try {
+        remoteModule = requireFn("@electron/remote");
+      } catch (e) {
+      }
+      let electronModule = null;
+      try {
+        electronModule = requireFn("electron");
+      } catch (e) {
+      }
+      const remoteFallback = electronModule ? electronModule["remote"] : void 0;
+      const targetObj = remoteModule || remoteFallback || electronModule;
+      if (targetObj) {
+        return {
+          dialog: targetObj["dialog"] || (electronModule == null ? void 0 : electronModule["dialog"]),
+          BrowserWindow: targetObj["BrowserWindow"] || (electronModule == null ? void 0 : electronModule["BrowserWindow"]),
+          shell: targetObj["shell"] || (electronModule == null ? void 0 : electronModule["shell"])
+        };
+      }
     }
   } catch (err) {
     console.error("No se pudo cargar Electron:", err);
@@ -15588,7 +15607,7 @@ async function exportNoteToPdfFile(app, file, options, excludedProperties, custo
     if (fsModule) {
       fsModule.writeFileSync(tempFile, fullHtml, "utf-8");
     } else {
-      throw new Error("Sistema de archivos de Node no disponible.");
+      throw new Error("Sistema de archivos no disponible.");
     }
     const electron = getElectron();
     if (!electron || !electron.BrowserWindow) {
