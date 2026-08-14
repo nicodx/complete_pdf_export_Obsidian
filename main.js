@@ -15529,7 +15529,7 @@ function getOs() {
   return null;
 }
 function pathJoin(...parts) {
-  const cleanParts = parts.map((p) => String(p).trim().replace(/^[\/\\]+|[\/\\]+$/g, "")).filter((p) => p.length > 0);
+  const cleanParts = parts.map((p) => String(p).trim().replace(/^[/\\]+|[/\\]+$/g, "")).filter((p) => p.length > 0);
   return cleanParts.join("/");
 }
 function pathDirname(filePath) {

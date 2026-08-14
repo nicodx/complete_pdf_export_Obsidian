@@ -109,7 +109,7 @@ function getOs(): NodeOsModule | null {
 
 function pathJoin(...parts: string[]): string {
   const cleanParts = parts
-    .map(p => String(p).trim().replace(/^[\/\\]+|[\/\\]+$/g, ''))
+    .map(p => String(p).trim().replace(/^[/\\]+|[/\\]+$/g, ''))
     .filter(p => p.length > 0);
   return cleanParts.join('/');
 }
