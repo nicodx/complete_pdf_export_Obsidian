@@ -14671,90 +14671,75 @@ var KATEX_CSS = '@font-face{font-display:block;font-family:KaTeX_AMS;font-style:
 function getKatexCss() {
   return KATEX_CSS;
 }
-function processLatexInMarkdown(markdown) {
-  const replacements = /* @__PURE__ */ new Map();
-  let placeholderCounter = 0;
+function extractAndProtectLatex(content) {
+  const latexBlocks = /* @__PURE__ */ new Map();
+  let blockIndex = 0;
   const codeBlocks = /* @__PURE__ */ new Map();
-  let protectedMd = markdown.replace(/```[\s\S]*?```/g, (match) => {
-    const id = `code_block_${placeholderCounter++}`;
+  let protectedContent = content.replace(/```[\s\S]*?```/g, (match) => {
+    const id = `CODEBLOCKTOKEN${blockIndex++}END`;
     codeBlocks.set(id, match);
-    return `<div class="code-placeholder-block" data-code-id="${id}"></div>`;
+    return id;
   });
-  protectedMd = protectedMd.replace(/`[^`\n]+`/g, (match) => {
-    const id = `code_inline_${placeholderCounter++}`;
+  protectedContent = protectedContent.replace(/`[^`\n]+`/g, (match) => {
+    const id = `CODEINLINETOKEN${blockIndex++}END`;
     codeBlocks.set(id, match);
-    return `<span class="code-placeholder-inline" data-code-id="${id}"></span>`;
+    return id;
   });
-  protectedMd = protectedMd.replace(/\$\$([\s\S]*?)\$\$/g, (_match, formula) => {
-    const cleanFormula = formula.trim();
+  protectedContent = protectedContent.replace(/\$\$([\s\S]*?)\$\$/g, (_match, math2) => {
+    const cleanFormula = math2.trim();
     if (!cleanFormula)
       return "";
-    const id = `latex_block_${placeholderCounter++}`;
-    try {
-      const rendered = katex.renderToString(cleanFormula, {
-        displayMode: true,
-        throwOnError: false,
-        output: "htmlAndMathml"
-      });
-      replacements.set(id, `<div class="latex-block-container">${rendered}</div>`);
-    } catch (err) {
-      console.warn("Error renderizando bloque LaTeX con KaTeX:", err);
-      replacements.set(id, `<div class="latex-block-container latex-error">$$${escapeHtml(cleanFormula)}$$</div>`);
-    }
+    const id = `LATEXBLOCKTOKEN${blockIndex++}END`;
+    latexBlocks.set(id, {
+      id,
+      math: cleanFormula,
+      displayMode: true
+    });
     return `
 
-<div class="latex-placeholder-block" data-latex-id="${id}"></div>
+${id}
 
 `;
   });
-  protectedMd = protectedMd.replace(/(?<!\$)\$([^$\n]+?)\$(?!\$)/g, (_match, formula) => {
-    const cleanFormula = formula.trim();
+  protectedContent = protectedContent.replace(/(?<!\\)\$([^$\n]+?)(?<!\\)\$/g, (match, math2) => {
+    const cleanFormula = math2.trim();
     if (!cleanFormula)
-      return "$ $";
-    const id = `latex_inline_${placeholderCounter++}`;
+      return match;
+    const id = `LATEXINLINETOKEN${blockIndex++}END`;
+    latexBlocks.set(id, {
+      id,
+      math: cleanFormula,
+      displayMode: false
+    });
+    return id;
+  });
+  codeBlocks.forEach((codeContent, id) => {
+    protectedContent = protectedContent.split(id).join(codeContent);
+  });
+  return { processedContent: protectedContent, latexBlocks };
+}
+function restoreAndRenderLatexInHtml(htmlContent, latexBlocks) {
+  let result = htmlContent;
+  for (const [id, block] of latexBlocks.entries()) {
     try {
-      const rendered = katex.renderToString(cleanFormula, {
-        displayMode: false,
+      const rendered = katex.renderToString(block.math, {
+        displayMode: block.displayMode,
         throwOnError: false,
         output: "htmlAndMathml"
       });
-      replacements.set(id, `<span class="latex-inline-container">${rendered}</span>`);
-    } catch (err) {
-      console.warn("Error renderizando LaTeX inline con KaTeX:", err);
-      replacements.set(id, `<span class="latex-inline-container latex-error">$${escapeHtml(cleanFormula)}$</span>`);
+      const wrapper = block.displayMode ? `<div class="latex-block-container katex-display-wrapper">${rendered}</div>` : `<span class="latex-inline-container katex-inline-wrapper">${rendered}</span>`;
+      const pPattern = new RegExp(`<p>\\s*${id}\\s*<\\/p>`, "g");
+      if (pPattern.test(result)) {
+        result = result.replace(pPattern, wrapper);
+      } else {
+        result = result.split(id).join(wrapper);
+      }
+    } catch (e) {
+      console.warn(`Error renderizando KaTeX para la f\xF3rmula: ${block.math}`, e);
+      const fallback = `<span class="latex-error">${escapeHtml(block.math)}</span>`;
+      result = result.split(id).join(fallback);
     }
-    return `<span class="latex-placeholder-inline" data-latex-id="${id}"></span>`;
-  });
-  codeBlocks.forEach((codeContent, id) => {
-    protectedMd = protectedMd.replace(
-      new RegExp(`<div[^>]*class="code-placeholder-block"[^>]*data-code-id="${id}"[^>]*><\\/div>`, "g"),
-      () => `
-
-${codeContent}
-
-`
-    );
-    protectedMd = protectedMd.replace(
-      new RegExp(`<span[^>]*class="code-placeholder-inline"[^>]*data-code-id="${id}"[^>]*><\\/span>`, "g"),
-      () => codeContent
-    );
-  });
-  return { processedMarkdown: protectedMd, replacements };
-}
-function restoreLatexInHtml(html, replacements) {
-  let result = html;
-  replacements.forEach((renderedHtml, id) => {
-    const blockRegex = new RegExp(
-      `(?:<p>\\s*)?<div[^>]*class="latex-placeholder-block"[^>]*data-latex-id="${id}"[^>]*><\\/div>(?:\\s*<\\/p>)?`,
-      "g"
-    );
-    result = result.replace(blockRegex, renderedHtml);
-    const inlineRegex = new RegExp(
-      `<span[^>]*class="latex-placeholder-inline"[^>]*data-latex-id="${id}"[^>]*><\\/span>`,
-      "g"
-    );
-    result = result.replace(inlineRegex, renderedHtml);
-  });
+  }
   return result;
 }
 function escapeHtml(text2) {
@@ -15380,12 +15365,12 @@ async function renderNoteToFullHtml(app, file, options, excludedProperties) {
     title = frontmatter.title;
   }
   let contentToRender = rawContent;
-  let latexReplacements = /* @__PURE__ */ new Map();
+  let latexBlocks = /* @__PURE__ */ new Map();
   contentToRender = stripFrontmatter(contentToRender);
   if (options.renderLatex) {
-    const latexResult = processLatexInMarkdown(contentToRender);
-    contentToRender = latexResult.processedMarkdown;
-    latexReplacements = latexResult.replacements;
+    const latexResult = extractAndProtectLatex(contentToRender);
+    contentToRender = latexResult.processedContent;
+    latexBlocks = latexResult.latexBlocks;
   }
   const tempContainer = createDiv();
   const component = new import_obsidian2.Component();
@@ -15404,8 +15389,8 @@ async function renderNoteToFullHtml(app, file, options, excludedProperties) {
     component.unload();
   }
   let bodyHtml = tempContainer.innerHTML;
-  if (options.renderLatex && latexReplacements.size > 0) {
-    bodyHtml = restoreLatexInHtml(bodyHtml, latexReplacements);
+  if (options.renderLatex && latexBlocks.size > 0) {
+    bodyHtml = restoreAndRenderLatexInHtml(bodyHtml, latexBlocks);
   }
   bodyHtml = await resolveImagesToDataUri(app, bodyHtml, file.path);
   return buildDocumentHtml(bodyHtml, title, propertiesHtml, options);

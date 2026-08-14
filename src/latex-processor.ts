@@ -1,106 +1,109 @@
 import katex from 'katex';
 import { KATEX_CSS } from './katex-css';
 
+export interface LatexBlock {
+  id: string;
+  math: string;
+  displayMode: boolean;
+}
+
 export function getKatexCss(): string {
   return KATEX_CSS;
 }
 
 /**
- * Procesa fórmulas LaTeX en Markdown ($...$ y $$...$$), reemplazándolas
- * por marcadores HTML seguros que Obsidian no elimine (a diferencia de %%..%%).
+ * Extrae y protege fórmulas LaTeX ($...$ y $$...$$) reemplazándolas
+ * por tokens de texto seguros antes de renderizar el markdown con Obsidian.
  */
-export function processLatexInMarkdown(markdown: string): { processedMarkdown: string; replacements: Map<string, string> } {
-  const replacements = new Map<string, string>();
-  let placeholderCounter = 0;
+export function extractAndProtectLatex(content: string): {
+  processedContent: string;
+  latexBlocks: Map<string, LatexBlock>;
+} {
+  const latexBlocks = new Map<string, LatexBlock>();
+  let blockIndex = 0;
 
   // 1. Proteger bloques de código con ``` o ` para no alterar $ dentro de código
   const codeBlocks = new Map<string, string>();
 
-  let protectedMd = markdown.replace(/```[\s\S]*?```/g, (match: string): string => {
-    const id = `code_block_${placeholderCounter++}`;
+  let protectedContent = content.replace(/```[\s\S]*?```/g, (match: string): string => {
+    const id = `CODEBLOCKTOKEN${blockIndex++}END`;
     codeBlocks.set(id, match);
-    return `<div class="code-placeholder-block" data-code-id="${id}"></div>`;
+    return id;
   });
 
-  protectedMd = protectedMd.replace(/`[^`\n]+`/g, (match: string): string => {
-    const id = `code_inline_${placeholderCounter++}`;
+  protectedContent = protectedContent.replace(/`[^`\n]+`/g, (match: string): string => {
+    const id = `CODEINLINETOKEN${blockIndex++}END`;
     codeBlocks.set(id, match);
-    return `<span class="code-placeholder-inline" data-code-id="${id}"></span>`;
+    return id;
   });
 
   // 2. Procesar fórmulas de bloque: $$ ... $$
-  protectedMd = protectedMd.replace(/\$\$([\s\S]*?)\$\$/g, (_match: string, formula: string): string => {
-    const cleanFormula: string = formula.trim();
+  protectedContent = protectedContent.replace(/\$\$([\s\S]*?)\$\$/g, (_match: string, math: string): string => {
+    const cleanFormula: string = math.trim();
     if (!cleanFormula) return '';
-    const id = `latex_block_${placeholderCounter++}`;
-    try {
-      const rendered: string = katex.renderToString(cleanFormula, {
-        displayMode: true,
-        throwOnError: false,
-        output: 'htmlAndMathml'
-      });
-      replacements.set(id, `<div class="latex-block-container">${rendered}</div>`);
-    } catch (err: unknown) {
-      console.warn('Error renderizando bloque LaTeX con KaTeX:', err);
-      replacements.set(id, `<div class="latex-block-container latex-error">$$${escapeHtml(cleanFormula)}$$</div>`);
-    }
-    return `\n\n<div class="latex-placeholder-block" data-latex-id="${id}"></div>\n\n`;
+    const id = `LATEXBLOCKTOKEN${blockIndex++}END`;
+    latexBlocks.set(id, {
+      id,
+      math: cleanFormula,
+      displayMode: true,
+    });
+    return `\n\n${id}\n\n`;
   });
 
   // 3. Procesar fórmulas inline: $ ... $
-  protectedMd = protectedMd.replace(/(?<!\$)\$([^$\n]+?)\$(?!\$)/g, (_match: string, formula: string): string => {
-    const cleanFormula: string = formula.trim();
-    if (!cleanFormula) return '$ $';
-    const id = `latex_inline_${placeholderCounter++}`;
-    try {
-      const rendered: string = katex.renderToString(cleanFormula, {
-        displayMode: false,
-        throwOnError: false,
-        output: 'htmlAndMathml'
-      });
-      replacements.set(id, `<span class="latex-inline-container">${rendered}</span>`);
-    } catch (err: unknown) {
-      console.warn('Error renderizando LaTeX inline con KaTeX:', err);
-      replacements.set(id, `<span class="latex-inline-container latex-error">$${escapeHtml(cleanFormula)}$</span>`);
-    }
-    return `<span class="latex-placeholder-inline" data-latex-id="${id}"></span>`;
+  protectedContent = protectedContent.replace(/(?<!\\)\$([^$\n]+?)(?<!\\)\$/g, (match: string, math: string): string => {
+    const cleanFormula: string = math.trim();
+    if (!cleanFormula) return match;
+    const id = `LATEXINLINETOKEN${blockIndex++}END`;
+    latexBlocks.set(id, {
+      id,
+      math: cleanFormula,
+      displayMode: false,
+    });
+    return id;
   });
 
-  // 4. Restaurar bloques de código en el Markdown antes de pasarlo al renderizador
+  // 4. Restaurar bloques de código
   codeBlocks.forEach((codeContent: string, id: string): void => {
-    protectedMd = protectedMd.replace(
-      new RegExp(`<div[^>]*class="code-placeholder-block"[^>]*data-code-id="${id}"[^>]*><\\/div>`, 'g'),
-      (): string => `\n\n${codeContent}\n\n`
-    );
-    protectedMd = protectedMd.replace(
-      new RegExp(`<span[^>]*class="code-placeholder-inline"[^>]*data-code-id="${id}"[^>]*><\\/span>`, 'g'),
-      (): string => codeContent
-    );
+    protectedContent = protectedContent.split(id).join(codeContent);
   });
 
-  return { processedMarkdown: protectedMd, replacements };
+  return { processedContent: protectedContent, latexBlocks };
 }
 
 /**
- * Restaura los placeholders de LaTeX en el HTML final renderizado
+ * Restaura y renderiza las fórmulas LaTeX con KaTeX en el HTML final
  */
-export function restoreLatexInHtml(html: string, replacements: Map<string, string>): string {
-  let result = html;
+export function restoreAndRenderLatexInHtml(
+  htmlContent: string,
+  latexBlocks: Map<string, LatexBlock>
+): string {
+  let result = htmlContent;
 
-  // 1. Reemplazar placeholders de bloques e inline
-  replacements.forEach((renderedHtml: string, id: string): void => {
-    const blockRegex = new RegExp(
-      `(?:<p>\\s*)?<div[^>]*class="latex-placeholder-block"[^>]*data-latex-id="${id}"[^>]*><\\/div>(?:\\s*<\\/p>)?`,
-      'g'
-    );
-    result = result.replace(blockRegex, renderedHtml);
+  for (const [id, block] of latexBlocks.entries()) {
+    try {
+      const rendered: string = katex.renderToString(block.math, {
+        displayMode: block.displayMode,
+        throwOnError: false,
+        output: 'htmlAndMathml',
+      });
 
-    const inlineRegex = new RegExp(
-      `<span[^>]*class="latex-placeholder-inline"[^>]*data-latex-id="${id}"[^>]*><\\/span>`,
-      'g'
-    );
-    result = result.replace(inlineRegex, renderedHtml);
-  });
+      const wrapper: string = block.displayMode
+        ? `<div class="latex-block-container katex-display-wrapper">${rendered}</div>`
+        : `<span class="latex-inline-container katex-inline-wrapper">${rendered}</span>`;
+
+      const pPattern = new RegExp(`<p>\\s*${id}\\s*<\\/p>`, 'g');
+      if (pPattern.test(result)) {
+        result = result.replace(pPattern, wrapper);
+      } else {
+        result = result.split(id).join(wrapper);
+      }
+    } catch (e: unknown) {
+      console.warn(`Error renderizando KaTeX para la fórmula: ${block.math}`, e);
+      const fallback: string = `<span class="latex-error">${escapeHtml(block.math)}</span>`;
+      result = result.split(id).join(fallback);
+    }
+  }
 
   return result;
 }

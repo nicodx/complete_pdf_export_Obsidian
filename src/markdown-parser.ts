@@ -1,5 +1,5 @@
 import { App, Component, MarkdownRenderer, TFile } from 'obsidian';
-import { processLatexInMarkdown, restoreLatexInHtml } from './latex-processor';
+import { extractAndProtectLatex, LatexBlock, restoreAndRenderLatexInHtml } from './latex-processor';
 import { renderPropertiesHtml } from './properties-renderer';
 import { buildDocumentHtml } from './template';
 import { ExportOptions } from './types';
@@ -31,15 +31,15 @@ export async function renderNoteToFullHtml(
 
   // 3. Procesar LaTeX en el markdown si está habilitado
   let contentToRender = rawContent;
-  let latexReplacements = new Map<string, string>();
+  let latexBlocks = new Map<string, LatexBlock>();
 
   // Remover bloque frontmatter para que MarkdownRenderer no lo duplique
   contentToRender = stripFrontmatter(contentToRender);
 
   if (options.renderLatex) {
-    const latexResult = processLatexInMarkdown(contentToRender);
-    contentToRender = latexResult.processedMarkdown;
-    latexReplacements = latexResult.replacements;
+    const latexResult = extractAndProtectLatex(contentToRender);
+    contentToRender = latexResult.processedContent;
+    latexBlocks = latexResult.latexBlocks;
   }
 
   // 4. Renderizar Markdown a HTML usando el MarkdownRenderer de Obsidian
@@ -63,9 +63,9 @@ export async function renderNoteToFullHtml(
 
   let bodyHtml = tempContainer.innerHTML;
 
-  // 5. Restaurar fórmulas LaTeX procesadas por KaTeX
-  if (options.renderLatex && latexReplacements.size > 0) {
-    bodyHtml = restoreLatexInHtml(bodyHtml, latexReplacements);
+  // 5. Restaurar y renderizar fórmulas LaTeX con KaTeX
+  if (options.renderLatex && latexBlocks.size > 0) {
+    bodyHtml = restoreAndRenderLatexInHtml(bodyHtml, latexBlocks);
   }
 
   // 6. Resolver imágenes locales a Data URIs base64
