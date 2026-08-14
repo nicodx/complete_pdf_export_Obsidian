@@ -48,7 +48,7 @@ export function processLatexInMarkdown(markdown: string): { processedMarkdown: s
   });
 
   // 3. Procesar fórmulas inline: $ ... $
-  protectedMd = protectedMd.replace(/(?<!\$)\$([^\$\n]+?)\$(?!\$)/g, (_match, formula) => {
+  protectedMd = protectedMd.replace(/(?<!\$)\$([^$\n]+?)\$(?!\$)/g, (_match, formula) => {
     const cleanFormula = formula.trim();
     if (!cleanFormula) return '$ $';
     const id = `latex_inline_${placeholderCounter++}`;
@@ -89,15 +89,12 @@ export function restoreLatexInHtml(html: string, replacements: Map<string, strin
 
   // 1. Reemplazar placeholders de bloques e inline
   replacements.forEach((renderedHtml, id) => {
-    // Caso bloque: <div class="latex-placeholder-block" data-latex-id="latex_block_X"></div>
-    // (A veces Obsidian envuelve bloques HTML en <p>, así que manejamos ambas posibilidades)
     const blockRegex = new RegExp(
       `(?:<p>\\s*)?<div[^>]*class="latex-placeholder-block"[^>]*data-latex-id="${id}"[^>]*><\\/div>(?:\\s*<\\/p>)?`,
       'g'
     );
     result = result.replace(blockRegex, renderedHtml);
 
-    // Caso inline: <span class="latex-placeholder-inline" data-latex-id="latex_inline_X"></span>
     const inlineRegex = new RegExp(
       `<span[^>]*class="latex-placeholder-inline"[^>]*data-latex-id="${id}"[^>]*><\\/span>`,
       'g'
@@ -105,52 +102,7 @@ export function restoreLatexInHtml(html: string, replacements: Map<string, strin
     result = result.replace(inlineRegex, renderedHtml);
   });
 
-  // 2. Procesar cualquier contenedor .math o MathJax que Obsidian haya podido renderizar nativamente
-  result = processUnrenderedObsidianMath(result);
-
   return result;
-}
-
-/**
- * Procesa elementos de matemáticas que Obsidian haya podido generar nativamente
- */
-function processUnrenderedObsidianMath(html: string): string {
-  // Buscar <span class="math math-inline"> o <div class="math math-block">
-  return html.replace(
-    /<(div|span)[^>]*class="[^"]*math\s+math-(block|inline)[^"]*"[^>]*>([\s\S]*?)<\/\1>/gi,
-    (match, tag, type, inner) => {
-      // Si ya contiene KaTeX, no modificar
-      if (inner.includes('class="katex"') || inner.includes('class="latex-block-container"')) {
-        return match;
-      }
-
-      // Si contiene annotation con LaTeX raw (ej. MathJax output)
-      const annotationMatch = inner.match(/<annotation[^>]*encoding="application\/x-tex"[^>]*>([\s\S]*?)<\/annotation>/i);
-      let formulaText = '';
-
-      if (annotationMatch) {
-        formulaText = annotationMatch[1].trim();
-      } else {
-        formulaText = inner.replace(/<[^>]+>/g, '').trim();
-      }
-
-      if (!formulaText) return match;
-
-      const isBlock = type === 'block' || tag.toLowerCase() === 'div';
-      try {
-        const rendered = katex.renderToString(formulaText, {
-          displayMode: isBlock,
-          throwOnError: false,
-          output: 'htmlAndMathml'
-        });
-        return isBlock
-          ? `<div class="latex-block-container">${rendered}</div>`
-          : `<span class="latex-inline-container">${rendered}</span>`;
-      } catch {
-        return match;
-      }
-    }
-  );
 }
 
 function escapeHtml(text: string): string {

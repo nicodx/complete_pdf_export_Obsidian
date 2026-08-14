@@ -4,7 +4,7 @@
  */
 
 export function renderPropertiesHtml(
-  frontmatter: Record<string, any> | undefined | null,
+  frontmatter: Record<string, unknown> | undefined | null,
   excludedKeys: string[] = []
 ): string {
   if (!frontmatter || typeof frontmatter !== 'object') {
@@ -62,22 +62,22 @@ export function renderPropertiesHtml(
 }
 
 function formatKeyName(key: string): string {
-  // Reemplazar guiones bajos o guiones por espacios y capitalizar
   return key
     .replace(/[_-]/g, ' ')
     .replace(/\b\w/g, c => c.toUpperCase());
 }
 
-function renderPropertyValue(key: string, value: any): string {
+function renderPropertyValue(key: string, value: unknown): string {
   const lowerKey = key.toLowerCase();
 
   // Caso 1: Tags
   if (lowerKey === 'tags' || lowerKey === 'tag') {
     const tagsArray = Array.isArray(value) ? value : String(value).split(',').map(t => t.trim());
     return tagsArray
-      .filter(t => t.length > 0)
-      .map(t => {
-        const cleanTag = t.startsWith('#') ? t.substring(1) : t;
+      .filter((t: unknown) => typeof t === 'string' && t.length > 0)
+      .map((t: unknown) => {
+        const str = String(t);
+        const cleanTag = str.startsWith('#') ? str.substring(1) : str;
         return `<span class="property-tag">#${escapeHtml(cleanTag)}</span>`;
       })
       .join(' ');
@@ -86,7 +86,7 @@ function renderPropertyValue(key: string, value: any): string {
   // Caso 2: Arrays / Listas
   if (Array.isArray(value)) {
     if (value.length === 0) return '';
-    return `<div class="property-list">${value.map(item => `<span class="property-pill">${escapeHtml(String(item))}</span>`).join(' ')}</div>`;
+    return `<div class="property-list">${value.map((item: unknown) => `<span class="property-pill">${escapeHtml(String(item))}</span>`).join(' ')}</div>`;
   }
 
   // Caso 3: Booleanos
@@ -98,18 +98,12 @@ function renderPropertyValue(key: string, value: any): string {
 
   // Caso 4: Enlaces internos tipo [[Nota]]
   if (typeof value === 'string' && value.startsWith('[[') && value.endsWith(']]')) {
-    const linkContent = value.slice(2, -2);
-    const [target, alias] = linkContent.split('|');
-    return `<span class="property-link">${escapeHtml(alias || target)}</span>`;
+    const linkText = value.substring(2, value.length - 2);
+    return `<span class="property-internal-link">${escapeHtml(linkText)}</span>`;
   }
 
-  // Caso 5: Objetos genéricos
-  if (typeof value === 'object') {
-    return `<pre class="property-json">${escapeHtml(JSON.stringify(value, null, 2))}</pre>`;
-  }
-
-  // Caso 6: Texto o números normales
-  return escapeHtml(String(value));
+  // Caso por defecto: Texto / Números / Fechas
+  return `<span class="property-text">${escapeHtml(String(value))}</span>`;
 }
 
 function escapeHtml(text: string): string {

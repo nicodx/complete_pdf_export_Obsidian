@@ -9,7 +9,6 @@ var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __getOwnPropNames = Object.getOwnPropertyNames;
 var __getProtoOf = Object.getPrototypeOf;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
-var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __export = (target, all) => {
   for (var name in all)
     __defProp(target, name, { get: all[name], enumerable: true });
@@ -31,10 +30,6 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
   mod
 ));
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
-var __publicField = (obj, key, value) => {
-  __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
-  return value;
-};
 
 // src/main.ts
 var main_exports = {};
@@ -69,17 +64,20 @@ var import_obsidian = require("obsidian");
 var PdfExportSettingTab = class extends import_obsidian.PluginSettingTab {
   constructor(app, plugin) {
     super(app, plugin);
-    __publicField(this, "plugin");
     this.plugin = plugin;
   }
   display() {
     const { containerEl } = this;
     containerEl.empty();
     containerEl.createEl("h2", { text: "Complete PDF Export \u2014 Configuraci\xF3n" });
-    const introEl = containerEl.createEl("div", { cls: "setting-item-description" });
-    introEl.innerHTML = `
-      <p><strong>Complete PDF Export</strong> est\xE1 especialmente pensado para exportar notas a PDF integrando las <strong>propiedades del documento (frontmatter / metadatos)</strong> y <strong>f\xF3rmulas matem\xE1ticas renderizadas en LaTeX</strong>, con total control sobre el tama\xF1o de hoja, orientaci\xF3n y dise\xF1o.</p>
-    `;
+    const introEl = containerEl.createDiv({ cls: "setting-item-description" });
+    const p = introEl.createEl("p");
+    p.createEl("strong", { text: "Complete PDF Export" });
+    p.appendText(" est\xE1 especialmente pensado para exportar notas a PDF integrando las ");
+    p.createEl("strong", { text: "propiedades del documento (frontmatter / metadatos)" });
+    p.appendText(" y ");
+    p.createEl("strong", { text: "f\xF3rmulas matem\xE1ticas renderizadas en LaTeX" });
+    p.appendText(", con total control sobre el tama\xF1o de hoja, orientaci\xF3n y dise\xF1o.");
     containerEl.createEl("h3", { text: "\u2615 Apoyar el Proyecto" });
     new import_obsidian.Setting(containerEl).setName("Puedes colaborar conmigo").setDesc("Si este plugin te resulta de utilidad para tu trabajo o estudio, puedes colaborar invit\xE1ndome un caf\xE9 para apoyar el desarrollo continuo.").addButton((button) => {
       button.setButtonText("\u2615 Invitar un caf\xE9 (Buy Me a Coffee)").setCta().onClick(() => {
@@ -120,7 +118,7 @@ var PdfExportSettingTab = class extends import_obsidian.PluginSettingTab {
     });
     new import_obsidian.Setting(containerEl).setName("Propiedades a excluir").setDesc("Nombres de propiedades a ocultar del PDF, separados por comas (ejemplo: cssclasses, publish, draft).").addText((text2) => {
       text2.setPlaceholder("cssclasses, publish, draft").setValue(this.plugin.settings.excludedProperties.join(", ")).onChange(async (value) => {
-        this.plugin.settings.excludedProperties = value.split(",").map((p) => p.trim()).filter((p) => p.length > 0);
+        this.plugin.settings.excludedProperties = value.split(",").map((p2) => p2.trim()).filter((p2) => p2.length > 0);
         await this.plugin.saveSettings();
       });
     });
@@ -162,6 +160,10 @@ var PdfExportSettingTab = class extends import_obsidian.PluginSettingTab {
         await this.plugin.saveSettings();
       });
     });
+  }
+  hide() {
+    const { containerEl } = this;
+    containerEl.empty();
   }
 };
 
@@ -14716,7 +14718,7 @@ function processLatexInMarkdown(markdown) {
 
 `;
   });
-  protectedMd = protectedMd.replace(/(?<!\$)\$([^\$\n]+?)\$(?!\$)/g, (_match, formula) => {
+  protectedMd = protectedMd.replace(/(?<!\$)\$([^$\n]+?)\$(?!\$)/g, (_match, formula) => {
     const cleanFormula = formula.trim();
     if (!cleanFormula)
       return "$ $";
@@ -14764,38 +14766,7 @@ function restoreLatexInHtml(html, replacements) {
     );
     result = result.replace(inlineRegex, renderedHtml);
   });
-  result = processUnrenderedObsidianMath(result);
   return result;
-}
-function processUnrenderedObsidianMath(html) {
-  return html.replace(
-    /<(div|span)[^>]*class="[^"]*math\s+math-(block|inline)[^"]*"[^>]*>([\s\S]*?)<\/\1>/gi,
-    (match, tag, type, inner2) => {
-      if (inner2.includes('class="katex"') || inner2.includes('class="latex-block-container"')) {
-        return match;
-      }
-      const annotationMatch = inner2.match(/<annotation[^>]*encoding="application\/x-tex"[^>]*>([\s\S]*?)<\/annotation>/i);
-      let formulaText = "";
-      if (annotationMatch) {
-        formulaText = annotationMatch[1].trim();
-      } else {
-        formulaText = inner2.replace(/<[^>]+>/g, "").trim();
-      }
-      if (!formulaText)
-        return match;
-      const isBlock = type === "block" || tag.toLowerCase() === "div";
-      try {
-        const rendered = katex.renderToString(formulaText, {
-          displayMode: isBlock,
-          throwOnError: false,
-          output: "htmlAndMathml"
-        });
-        return isBlock ? `<div class="latex-block-container">${rendered}</div>` : `<span class="latex-inline-container">${rendered}</span>`;
-      } catch (e) {
-        return match;
-      }
-    }
-  );
 }
 function escapeHtml(text2) {
   return text2.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
@@ -14863,8 +14834,9 @@ function renderPropertyValue(key, value) {
   const lowerKey = key.toLowerCase();
   if (lowerKey === "tags" || lowerKey === "tag") {
     const tagsArray = Array.isArray(value) ? value : String(value).split(",").map((t) => t.trim());
-    return tagsArray.filter((t) => t.length > 0).map((t) => {
-      const cleanTag = t.startsWith("#") ? t.substring(1) : t;
+    return tagsArray.filter((t) => typeof t === "string" && t.length > 0).map((t) => {
+      const str = String(t);
+      const cleanTag = str.startsWith("#") ? str.substring(1) : str;
       return `<span class="property-tag">#${escapeHtml2(cleanTag)}</span>`;
     }).join(" ");
   }
@@ -14877,14 +14849,10 @@ function renderPropertyValue(key, value) {
     return value ? `<span class="property-bool property-bool-true">\u2713 S\xED</span>` : `<span class="property-bool property-bool-false">\u2717 No</span>`;
   }
   if (typeof value === "string" && value.startsWith("[[") && value.endsWith("]]")) {
-    const linkContent = value.slice(2, -2);
-    const [target, alias] = linkContent.split("|");
-    return `<span class="property-link">${escapeHtml2(alias || target)}</span>`;
+    const linkText = value.substring(2, value.length - 2);
+    return `<span class="property-internal-link">${escapeHtml2(linkText)}</span>`;
   }
-  if (typeof value === "object") {
-    return `<pre class="property-json">${escapeHtml2(JSON.stringify(value, null, 2))}</pre>`;
-  }
-  return escapeHtml2(String(value));
+  return `<span class="property-text">${escapeHtml2(String(value))}</span>`;
 }
 function escapeHtml2(text2) {
   return text2.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
@@ -15539,8 +15507,9 @@ var os = __toESM(require("os"));
 function getElectron() {
   try {
     if (typeof window.require === "function") {
-      const electron = window.require("electron");
-      return electron.remote || electron;
+      const electronRequire = window.require;
+      const electron = electronRequire("electron");
+      return electron || null;
     }
   } catch (err) {
     console.error("No se pudo cargar Electron:", err);
@@ -15648,7 +15617,7 @@ async function exportNoteToPdfFile(app, file, options, excludedProperties, custo
       }
       fs.writeFileSync(outputPath, Buffer.from(pdfData));
       if (options.openPdfAfterExport && electron.shell) {
-        electron.shell.openPath(outputPath);
+        void electron.shell.openPath(outputPath);
       }
       notice.hide();
       new import_obsidian3.Notice(`\u2705 PDF exportado con \xE9xito: ${path2.basename(outputPath)}`, 5e3);
@@ -15680,9 +15649,6 @@ function escapeHtml4(text2) {
 var ExportPdfModal = class extends import_obsidian4.Modal {
   constructor(app, plugin, file) {
     super(app);
-    __publicField(this, "plugin");
-    __publicField(this, "file");
-    __publicField(this, "options");
     this.plugin = plugin;
     this.file = file;
     this.options = {
@@ -15710,8 +15676,8 @@ var ExportPdfModal = class extends import_obsidian4.Modal {
       text: "Exportar Nota a PDF",
       cls: "pdf-export-modal-title"
     });
-    const fileInfo = contentEl.createEl("div", { cls: "pdf-export-file-info" });
-    fileInfo.createEl("span", { text: "Nota: ", cls: "pdf-file-label" });
+    const fileInfo = contentEl.createDiv({ cls: "pdf-export-file-info" });
+    fileInfo.createSpan({ text: "Nota: ", cls: "pdf-file-label" });
     fileInfo.createEl("strong", { text: `${this.file.basename}.md`, cls: "pdf-file-name" });
     new import_obsidian4.Setting(contentEl).setName("Tama\xF1o de papel").setDesc("Formato de la hoja").addDropdown((dropdown) => {
       dropdown.addOption("A4", "A4 (210 \xD7 297 mm)").addOption("Letter", "Carta / Letter (8.5 \xD7 11 pulg.)").addOption("Legal", "Oficio / Legal (8.5 \xD7 14 pulg.)").addOption("A3", "A3 (297 \xD7 420 mm)").addOption("A5", "A5 (148 \xD7 210 mm)").addOption("Executive", "Ejecutivo (7.25 \xD7 10.5 pulg.)").setValue(this.options.pageSize).onChange((value) => {
@@ -15753,7 +15719,7 @@ var ExportPdfModal = class extends import_obsidian4.Modal {
         this.options.openPdfAfterExport = value;
       });
     });
-    const buttonContainer = contentEl.createEl("div", { cls: "pdf-export-modal-buttons" });
+    const buttonContainer = contentEl.createDiv({ cls: "pdf-export-modal-buttons" });
     const cancelBtn = buttonContainer.createEl("button", {
       text: "Cancelar",
       cls: "mod-cancel"
@@ -15763,14 +15729,20 @@ var ExportPdfModal = class extends import_obsidian4.Modal {
       text: "\u{1F4C4} Exportar PDF",
       cls: "mod-cta pdf-export-btn"
     });
-    exportBtn.addEventListener("click", async () => {
+    exportBtn.addEventListener("click", () => {
       this.close();
-      await exportNoteToPdfFile(
+      void exportNoteToPdfFile(
         this.app,
         this.file,
         this.options,
         this.plugin.settings.excludedProperties
       );
+    });
+    const donateFooter = contentEl.createDiv({ cls: "donate-footer" });
+    donateFooter.createSpan({ text: "\xBFTe gusta este plugin? " });
+    donateFooter.createEl("a", {
+      text: "\u2615 Inv\xEDtame un caf\xE9 para apoyar el desarrollo",
+      href: "https://buymeacoffee.com/nicodx"
     });
   }
   onClose() {
@@ -15783,7 +15755,7 @@ var ExportPdfModal = class extends import_obsidian4.Modal {
 var ObsidianPdfExportPlugin = class extends import_obsidian5.Plugin {
   constructor() {
     super(...arguments);
-    __publicField(this, "settings", DEFAULT_SETTINGS);
+    this.settings = DEFAULT_SETTINGS;
   }
   async onload() {
     await this.loadSettings();

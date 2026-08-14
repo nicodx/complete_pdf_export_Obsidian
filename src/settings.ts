@@ -15,11 +15,15 @@ export class PdfExportSettingTab extends PluginSettingTab {
     containerEl.empty();
 
     containerEl.createEl('h2', { text: 'Complete PDF Export — Configuración' });
-    
-    const introEl = containerEl.createEl('div', { cls: 'setting-item-description' });
-    introEl.innerHTML = `
-      <p><strong>Complete PDF Export</strong> está especialmente pensado para exportar notas a PDF integrando las <strong>propiedades del documento (frontmatter / metadatos)</strong> y <strong>fórmulas matemáticas renderizadas en LaTeX</strong>, con total control sobre el tamaño de hoja, orientación y diseño.</p>
-    `;
+
+    const introEl = containerEl.createDiv({ cls: 'setting-item-description' });
+    const p = introEl.createEl('p');
+    p.createEl('strong', { text: 'Complete PDF Export' });
+    p.appendText(' está especialmente pensado para exportar notas a PDF integrando las ');
+    p.createEl('strong', { text: 'propiedades del documento (frontmatter / metadatos)' });
+    p.appendText(' y ');
+    p.createEl('strong', { text: 'fórmulas matemáticas renderizadas en LaTeX' });
+    p.appendText(', con total control sobre el tamaño de hoja, orientación y diseño.');
 
     // --- SECCIÓN: COLABORAR / BUY ME A COFFEE ---
     containerEl.createEl('h3', { text: '☕ Apoyar el Proyecto' });
@@ -211,5 +215,10 @@ export class PdfExportSettingTab extends PluginSettingTab {
             await this.plugin.saveSettings();
           });
       });
+  }
+
+  hide(): void {
+    const { containerEl } = this;
+    containerEl.empty();
   }
 }

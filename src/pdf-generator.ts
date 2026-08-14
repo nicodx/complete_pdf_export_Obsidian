@@ -5,11 +5,36 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 
-function getElectron() {
+interface ElectronDialogResult {
+  canceled: boolean;
+  filePath?: string;
+}
+
+interface ElectronModule {
+  dialog?: {
+    showSaveDialog(options: Record<string, unknown>): Promise<ElectronDialogResult>;
+  };
+  BrowserWindow?: new (options: Record<string, unknown>) => ElectronBrowserWindow;
+  shell?: {
+    openPath(path: string): Promise<string>;
+  };
+}
+
+interface ElectronBrowserWindow {
+  loadFile(filePath: string): Promise<void>;
+  webContents: {
+    executeJavaScript(code: string): Promise<unknown>;
+    printToPDF(options: Record<string, unknown>): Promise<Uint8Array>;
+  };
+  destroy(): void;
+}
+
+function getElectron(): ElectronModule | null {
   try {
-    if (typeof (window as any).require === 'function') {
-      const electron = (window as any).require('electron');
-      return electron.remote || electron;
+    if (typeof (window as unknown as { require?: (module: string) => unknown }).require === 'function') {
+      const electronRequire = (window as unknown as { require: (module: string) => unknown }).require;
+      const electron = electronRequire('electron') as ElectronModule;
+      return electron || null;
     }
   } catch (err) {
     console.error('No se pudo cargar Electron:', err);
@@ -123,7 +148,7 @@ export async function exportNoteToPdfFile(
       await sleep(250);
 
       // Configurar opciones de impresión
-      const printOptions: any = {
+      const printOptions: Record<string, unknown> = {
         printBackground: true,
         preferCSSPageSize: true,
         landscape: options.pageOrientation === 'landscape',
@@ -165,7 +190,7 @@ export async function exportNoteToPdfFile(
 
       // 5. Abrir el archivo PDF automáticamente si está habilitado
       if (options.openPdfAfterExport && electron.shell) {
-        electron.shell.openPath(outputPath);
+        void electron.shell.openPath(outputPath);
       }
 
       notice.hide();

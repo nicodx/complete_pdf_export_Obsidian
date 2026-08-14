@@ -43,8 +43,8 @@ export class ExportPdfModal extends Modal {
       cls: 'pdf-export-modal-title'
     });
 
-    const fileInfo = contentEl.createEl('div', { cls: 'pdf-export-file-info' });
-    fileInfo.createEl('span', { text: 'Nota: ', cls: 'pdf-file-label' });
+    const fileInfo = contentEl.createDiv({ cls: 'pdf-export-file-info' });
+    fileInfo.createSpan({ text: 'Nota: ', cls: 'pdf-file-label' });
     fileInfo.createEl('strong', { text: `${this.file.basename}.md`, cls: 'pdf-file-name' });
 
     // Opciones de Página
@@ -155,7 +155,7 @@ export class ExportPdfModal extends Modal {
       });
 
     // Botones de acción
-    const buttonContainer = contentEl.createEl('div', { cls: 'pdf-export-modal-buttons' });
+    const buttonContainer = contentEl.createDiv({ cls: 'pdf-export-modal-buttons' });
 
     const cancelBtn = buttonContainer.createEl('button', {
       text: 'Cancelar',
@@ -167,14 +167,22 @@ export class ExportPdfModal extends Modal {
       text: '📄 Exportar PDF',
       cls: 'mod-cta pdf-export-btn'
     });
-    exportBtn.addEventListener('click', async () => {
+    exportBtn.addEventListener('click', () => {
       this.close();
-      await exportNoteToPdfFile(
+      void exportNoteToPdfFile(
         this.app,
         this.file,
         this.options,
         this.plugin.settings.excludedProperties
       );
+    });
+
+    // Pie de página: Donación
+    const donateFooter = contentEl.createDiv({ cls: 'donate-footer' });
+    donateFooter.createSpan({ text: '¿Te gusta este plugin? ' });
+    donateFooter.createEl('a', {
+      text: '☕ Invítame un café para apoyar el desarrollo',
+      href: 'https://buymeacoffee.com/nicodx'
     });
   }
 
