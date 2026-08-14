@@ -1,9 +1,6 @@
 import { App, FileSystemAdapter, Notice, TFile } from 'obsidian';
 import { ExportOptions } from './types';
 import { renderNoteToFullHtml } from './markdown-parser';
-import * as fs from 'fs';
-import * as path from 'path';
-import * as os from 'os';
 
 interface ElectronDialogResult {
   canceled: boolean;
@@ -35,18 +32,73 @@ interface ElectronModule {
   shell?: ElectronShell;
 }
 
+interface NodeFsModule {
+  existsSync(filePath: string): boolean;
+  mkdirSync(filePath: string, options?: { recursive: boolean }): void;
+  writeFileSync(filePath: string, data: string | Uint8Array, encoding?: string): void;
+  unlinkSync(filePath: string): void;
+}
+
+interface NodeOsModule {
+  tmpdir(): string;
+}
+
 function getElectron(): ElectronModule | null {
   try {
-    const customWindow: Record<string, unknown> = window as unknown as Record<string, unknown>;
-    const requireFn: unknown = customWindow['require'];
+    const customWindow = window as unknown as Record<string, unknown>;
+    const requireFn = customWindow['require'];
     if (typeof requireFn === 'function') {
-      const electron: ElectronModule = (requireFn as (moduleName: string) => ElectronModule)('electron');
-      return electron || null;
+      return (requireFn as (moduleName: string) => ElectronModule)('electron') || null;
     }
   } catch (err: unknown) {
     console.error('No se pudo cargar Electron:', err);
   }
   return null;
+}
+
+function getFs(): NodeFsModule | null {
+  try {
+    const customWindow = window as unknown as Record<string, unknown>;
+    const requireFn = customWindow['require'];
+    if (typeof requireFn === 'function') {
+      return (requireFn as (moduleName: string) => NodeFsModule)('fs') || null;
+    }
+  } catch {
+    // Ignorar si no está disponible
+  }
+  return null;
+}
+
+function getOs(): NodeOsModule | null {
+  try {
+    const customWindow = window as unknown as Record<string, unknown>;
+    const requireFn = customWindow['require'];
+    if (typeof requireFn === 'function') {
+      return (requireFn as (moduleName: string) => NodeOsModule)('os') || null;
+    }
+  } catch {
+    // Ignorar si no está disponible
+  }
+  return null;
+}
+
+function pathJoin(...parts: string[]): string {
+  const cleanParts = parts
+    .map(p => String(p).trim().replace(/^[\/\\]+|[\/\\]+$/g, ''))
+    .filter(p => p.length > 0);
+  return cleanParts.join('/');
+}
+
+function pathDirname(filePath: string): string {
+  const normalized = filePath.replace(/\\/g, '/');
+  const index = normalized.lastIndexOf('/');
+  return index !== -1 ? normalized.substring(0, index) : '.';
+}
+
+function pathBasename(filePath: string): string {
+  const normalized = filePath.replace(/\\/g, '/');
+  const index = normalized.lastIndexOf('/');
+  return index !== -1 ? normalized.substring(index + 1) : filePath;
 }
 
 export function getVaultBasePath(app: App): string {
@@ -62,19 +114,21 @@ export function getVaultBasePath(app: App): string {
  */
 export async function promptSavePath(app: App, file: TFile, defaultDir?: string): Promise<string | null> {
   const electron: ElectronModule | null = getElectron();
+  const fsModule: NodeFsModule | null = getFs();
+
   if (!electron || !electron.dialog) {
     // Fallback: guardar en la misma carpeta que la nota
     const vaultPath: string = getVaultBasePath(app);
     const folder: string = file.parent ? file.parent.path : '';
-    const fallbackPath: string = path.join(vaultPath, folder, `${file.basename}.pdf`);
-    return String(fallbackPath);
+    const fallbackPath: string = pathJoin(vaultPath, folder, `${file.basename}.pdf`);
+    return fallbackPath;
   }
 
-  const initialDir: string = defaultDir && fs.existsSync(defaultDir)
+  const initialDir: string = defaultDir && fsModule && fsModule.existsSync(defaultDir)
     ? defaultDir
-    : path.join(getVaultBasePath(app), file.parent ? file.parent.path : '');
+    : pathJoin(getVaultBasePath(app), file.parent ? file.parent.path : '');
 
-  const defaultPath: string = path.join(initialDir, `${file.basename}.pdf`);
+  const defaultPath: string = pathJoin(initialDir, `${file.basename}.pdf`);
 
   const result: ElectronDialogResult = await electron.dialog.showSaveDialog({
     title: 'Exportar Nota como PDF',
@@ -102,6 +156,8 @@ export async function exportNoteToPdfFile(
   customOutputPath?: string
 ): Promise<string | null> {
   const notice: Notice = new Notice('Generando PDF con fórmulas LaTeX...', 0);
+  const fsModule: NodeFsModule | null = getFs();
+  const osModule: NodeOsModule | null = getOs();
 
   try {
     // 1. Obtener la ruta de destino si no fue provista
@@ -119,9 +175,14 @@ export async function exportNoteToPdfFile(
     const fullHtml: string = await renderNoteToFullHtml(app, file, options, excludedProperties);
 
     // 3. Escribir archivo temporal HTML
-    const tempDir: string = os.tmpdir();
-    const tempFile: string = path.join(tempDir, `obsidian-pdf-export-${Date.now()}.html`);
-    fs.writeFileSync(tempFile, fullHtml, 'utf-8');
+    const tempDir: string = osModule ? osModule.tmpdir() : '/tmp';
+    const tempFile: string = pathJoin(tempDir, `obsidian-pdf-export-${Date.now()}.html`);
+
+    if (fsModule) {
+      fsModule.writeFileSync(tempFile, fullHtml, 'utf-8');
+    } else {
+      throw new Error('Sistema de archivos de Node no disponible.');
+    }
 
     // 4. Crear ventana headless de Electron para renderizar e imprimir
     const electron: ElectronModule | null = getElectron();
@@ -190,12 +251,14 @@ export async function exportNoteToPdfFile(
       const pdfData: Uint8Array = await win.webContents.printToPDF(printOptions);
 
       // Asegurar que el directorio de salida existe
-      const targetDir: string = path.dirname(outputPath);
-      if (!fs.existsSync(targetDir)) {
-        fs.mkdirSync(targetDir, { recursive: true });
+      const targetDir: string = pathDirname(outputPath);
+      if (fsModule && !fsModule.existsSync(targetDir)) {
+        fsModule.mkdirSync(targetDir, { recursive: true });
       }
 
-      fs.writeFileSync(outputPath, Buffer.from(pdfData));
+      if (fsModule) {
+        fsModule.writeFileSync(outputPath, pdfData);
+      }
 
       // 5. Abrir el archivo PDF automáticamente si está habilitado
       if (options.openPdfAfterExport && electron.shell) {
@@ -203,14 +266,14 @@ export async function exportNoteToPdfFile(
       }
 
       notice.hide();
-      new Notice(`✅ PDF exportado con éxito: ${path.basename(outputPath)}`, 5000);
-      return String(outputPath);
+      new Notice(`✅ PDF exportado con éxito: ${pathBasename(outputPath)}`, 5000);
+      return outputPath;
 
     } finally {
       win.destroy();
       try {
-        if (fs.existsSync(tempFile)) {
-          fs.unlinkSync(tempFile);
+        if (fsModule && fsModule.existsSync(tempFile)) {
+          fsModule.unlinkSync(tempFile);
         }
       } catch {
         // Ignorar error al limpiar temporal
