@@ -31,12 +31,12 @@ interface ElectronBrowserWindow {
 
 function getElectron(): ElectronModule | null {
   try {
-    if (typeof (window as unknown as { require?: (module: string) => unknown }).require === 'function') {
-      const electronRequire = (window as unknown as { require: (module: string) => unknown }).require;
-      const electron = electronRequire('electron') as ElectronModule;
-      return electron || null;
+    const customWindow = window as unknown as { require?: (moduleName: string) => unknown };
+    if (typeof customWindow.require === 'function') {
+      const electronModule = customWindow.require('electron') as ElectronModule;
+      return electronModule || null;
     }
-  } catch (err) {
+  } catch (err: unknown) {
     console.error('No se pudo cargar Electron:', err);
   }
   return null;
@@ -54,21 +54,21 @@ export function getVaultBasePath(app: App): string {
  * Abre el diálogo nativo para seleccionar dónde guardar el PDF
  */
 export async function promptSavePath(app: App, file: TFile, defaultDir?: string): Promise<string | null> {
-  const electron = getElectron();
+  const electron: ElectronModule | null = getElectron();
   if (!electron || !electron.dialog) {
     // Fallback: guardar en la misma carpeta que la nota
-    const vaultPath = getVaultBasePath(app);
-    const folder = file.parent ? file.parent.path : '';
+    const vaultPath: string = getVaultBasePath(app);
+    const folder: string = file.parent ? file.parent.path : '';
     return path.join(vaultPath, folder, `${file.basename}.pdf`);
   }
 
-  const initialDir = defaultDir && fs.existsSync(defaultDir)
+  const initialDir: string = defaultDir && fs.existsSync(defaultDir)
     ? defaultDir
     : path.join(getVaultBasePath(app), file.parent ? file.parent.path : '');
 
-  const defaultPath = path.join(initialDir, `${file.basename}.pdf`);
+  const defaultPath: string = path.join(initialDir, `${file.basename}.pdf`);
 
-  const result = await electron.dialog.showSaveDialog({
+  const result: ElectronDialogResult = await electron.dialog.showSaveDialog({
     title: 'Exportar Nota como PDF',
     defaultPath: defaultPath,
     filters: [
@@ -93,34 +93,35 @@ export async function exportNoteToPdfFile(
   excludedProperties: string[],
   customOutputPath?: string
 ): Promise<string | null> {
-  const notice = new Notice('Generando PDF con fórmulas LaTeX...', 0);
+  const notice: Notice = new Notice('Generando PDF con fórmulas LaTeX...', 0);
 
   try {
     // 1. Obtener la ruta de destino si no fue provista
-    let outputPath = customOutputPath;
+    let outputPath: string | undefined = customOutputPath;
     if (!outputPath) {
-      outputPath = await promptSavePath(app, file);
-      if (!outputPath) {
+      const prompted: string | null = await promptSavePath(app, file);
+      if (!prompted) {
         notice.hide();
         return null;
       }
+      outputPath = prompted;
     }
 
     // 2. Generar el documento HTML completo
-    const fullHtml = await renderNoteToFullHtml(app, file, options, excludedProperties);
+    const fullHtml: string = await renderNoteToFullHtml(app, file, options, excludedProperties);
 
     // 3. Escribir archivo temporal HTML
-    const tempDir = os.tmpdir();
-    const tempFile = path.join(tempDir, `obsidian-pdf-export-${Date.now()}.html`);
+    const tempDir: string = os.tmpdir();
+    const tempFile: string = path.join(tempDir, `obsidian-pdf-export-${Date.now()}.html`);
     fs.writeFileSync(tempFile, fullHtml, 'utf-8');
 
     // 4. Crear ventana headless de Electron para renderizar e imprimir
-    const electron = getElectron();
+    const electron: ElectronModule | null = getElectron();
     if (!electron || !electron.BrowserWindow) {
       throw new Error('Electron no está disponible en este entorno.');
     }
 
-    const win = new electron.BrowserWindow({
+    const win: ElectronBrowserWindow = new electron.BrowserWindow({
       show: false,
       width: 1024,
       height: 768,
@@ -178,10 +179,10 @@ export async function exportNoteToPdfFile(
         `;
       }
 
-      const pdfData = await win.webContents.printToPDF(printOptions);
+      const pdfData: Uint8Array = await win.webContents.printToPDF(printOptions);
 
       // Asegurar que el directorio de salida existe
-      const targetDir = path.dirname(outputPath);
+      const targetDir: string = path.dirname(outputPath);
       if (!fs.existsSync(targetDir)) {
         fs.mkdirSync(targetDir, { recursive: true });
       }
@@ -208,7 +209,7 @@ export async function exportNoteToPdfFile(
       }
     }
 
-  } catch (err) {
+  } catch (err: unknown) {
     notice.hide();
     console.error('Error al exportar PDF:', err);
     new Notice(`❌ Error al exportar PDF: ${err instanceof Error ? err.message : String(err)}`, 7000);
@@ -217,7 +218,7 @@ export async function exportNoteToPdfFile(
 }
 
 function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise(resolve => window.setTimeout(resolve, ms));
 }
 
 function escapeHtml(text: string): string {

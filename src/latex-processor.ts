@@ -16,31 +16,31 @@ export function processLatexInMarkdown(markdown: string): { processedMarkdown: s
   // 1. Proteger bloques de código con ``` o ` para no alterar $ dentro de código
   const codeBlocks = new Map<string, string>();
 
-  let protectedMd = markdown.replace(/```[\s\S]*?```/g, (match) => {
+  let protectedMd = markdown.replace(/```[\s\S]*?```/g, (match: string): string => {
     const id = `code_block_${placeholderCounter++}`;
     codeBlocks.set(id, match);
     return `<div class="code-placeholder-block" data-code-id="${id}"></div>`;
   });
 
-  protectedMd = protectedMd.replace(/`[^`\n]+`/g, (match) => {
+  protectedMd = protectedMd.replace(/`[^`\n]+`/g, (match: string): string => {
     const id = `code_inline_${placeholderCounter++}`;
     codeBlocks.set(id, match);
     return `<span class="code-placeholder-inline" data-code-id="${id}"></span>`;
   });
 
   // 2. Procesar fórmulas de bloque: $$ ... $$
-  protectedMd = protectedMd.replace(/\$\$([\s\S]*?)\$\$/g, (_match, formula) => {
-    const cleanFormula = formula.trim();
+  protectedMd = protectedMd.replace(/\$\$([\s\S]*?)\$\$/g, (_match: string, formula: string): string => {
+    const cleanFormula: string = formula.trim();
     if (!cleanFormula) return '';
     const id = `latex_block_${placeholderCounter++}`;
     try {
-      const rendered = katex.renderToString(cleanFormula, {
+      const rendered: string = katex.renderToString(cleanFormula, {
         displayMode: true,
         throwOnError: false,
         output: 'htmlAndMathml'
       });
       replacements.set(id, `<div class="latex-block-container">${rendered}</div>`);
-    } catch (err) {
+    } catch (err: unknown) {
       console.warn('Error renderizando bloque LaTeX con KaTeX:', err);
       replacements.set(id, `<div class="latex-block-container latex-error">$$${escapeHtml(cleanFormula)}$$</div>`);
     }
@@ -48,18 +48,18 @@ export function processLatexInMarkdown(markdown: string): { processedMarkdown: s
   });
 
   // 3. Procesar fórmulas inline: $ ... $
-  protectedMd = protectedMd.replace(/(?<!\$)\$([^$\n]+?)\$(?!\$)/g, (_match, formula) => {
-    const cleanFormula = formula.trim();
+  protectedMd = protectedMd.replace(/(?<!\$)\$([^$\n]+?)\$(?!\$)/g, (_match: string, formula: string): string => {
+    const cleanFormula: string = formula.trim();
     if (!cleanFormula) return '$ $';
     const id = `latex_inline_${placeholderCounter++}`;
     try {
-      const rendered = katex.renderToString(cleanFormula, {
+      const rendered: string = katex.renderToString(cleanFormula, {
         displayMode: false,
         throwOnError: false,
         output: 'htmlAndMathml'
       });
       replacements.set(id, `<span class="latex-inline-container">${rendered}</span>`);
-    } catch (err) {
+    } catch (err: unknown) {
       console.warn('Error renderizando LaTeX inline con KaTeX:', err);
       replacements.set(id, `<span class="latex-inline-container latex-error">$${escapeHtml(cleanFormula)}$</span>`);
     }
@@ -67,14 +67,14 @@ export function processLatexInMarkdown(markdown: string): { processedMarkdown: s
   });
 
   // 4. Restaurar bloques de código en el Markdown antes de pasarlo al renderizador
-  codeBlocks.forEach((codeContent, id) => {
+  codeBlocks.forEach((codeContent: string, id: string): void => {
     protectedMd = protectedMd.replace(
       new RegExp(`<div[^>]*class="code-placeholder-block"[^>]*data-code-id="${id}"[^>]*><\\/div>`, 'g'),
-      () => `\n\n${codeContent}\n\n`
+      (): string => `\n\n${codeContent}\n\n`
     );
     protectedMd = protectedMd.replace(
       new RegExp(`<span[^>]*class="code-placeholder-inline"[^>]*data-code-id="${id}"[^>]*><\\/span>`, 'g'),
-      () => codeContent
+      (): string => codeContent
     );
   });
 
@@ -88,7 +88,7 @@ export function restoreLatexInHtml(html: string, replacements: Map<string, strin
   let result = html;
 
   // 1. Reemplazar placeholders de bloques e inline
-  replacements.forEach((renderedHtml, id) => {
+  replacements.forEach((renderedHtml: string, id: string): void => {
     const blockRegex = new RegExp(
       `(?:<p>\\s*)?<div[^>]*class="latex-placeholder-block"[^>]*data-latex-id="${id}"[^>]*><\\/div>(?:\\s*<\\/p>)?`,
       'g'

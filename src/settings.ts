@@ -14,7 +14,9 @@ export class PdfExportSettingTab extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
 
-    containerEl.createEl('h2', { text: 'Complete PDF Export — Configuración' });
+    new Setting(containerEl)
+      .setName('Complete PDF Export — Configuración')
+      .setHeading();
 
     const introEl = containerEl.createDiv({ cls: 'setting-item-description' });
     const p = introEl.createEl('p');
@@ -26,7 +28,10 @@ export class PdfExportSettingTab extends PluginSettingTab {
     p.appendText(', con total control sobre el tamaño de hoja, orientación y diseño.');
 
     // --- SECCIÓN: COLABORAR / BUY ME A COFFEE ---
-    containerEl.createEl('h3', { text: '☕ Apoyar el Proyecto' });
+    new Setting(containerEl)
+      .setName('☕ Apoyar el Proyecto')
+      .setHeading();
+
     new Setting(containerEl)
       .setName('Puedes colaborar conmigo')
       .setDesc('Si este plugin te resulta de utilidad para tu trabajo o estudio, puedes colaborar invitándome un café para apoyar el desarrollo continuo.')
@@ -40,7 +45,9 @@ export class PdfExportSettingTab extends PluginSettingTab {
       });
 
     // --- SECCIÓN: FORMATO DE PÁGINA ---
-    containerEl.createEl('h3', { text: '📄 Formato de Página' });
+    new Setting(containerEl)
+      .setName('📄 Formato de Página')
+      .setHeading();
 
     new Setting(containerEl)
       .setName('Tamaño de papel')
@@ -91,7 +98,9 @@ export class PdfExportSettingTab extends PluginSettingTab {
       });
 
     // --- SECCIÓN: CONTENIDO Y FÓRMULAS ---
-    containerEl.createEl('h3', { text: '🧮 Fórmulas LaTeX y Propiedades' });
+    new Setting(containerEl)
+      .setName('🧮 Fórmulas LaTeX y Propiedades')
+      .setHeading();
 
     new Setting(containerEl)
       .setName('Renderizar fórmulas LaTeX')
@@ -134,7 +143,9 @@ export class PdfExportSettingTab extends PluginSettingTab {
       });
 
     // --- SECCIÓN: ENCABEZADOS Y PIE DE PÁGINA ---
-    containerEl.createEl('h3', { text: '🏷️ Título, Encabezado y Pie de Página' });
+    new Setting(containerEl)
+      .setName('🏷️ Título, Encabezado y Pie de Página')
+      .setHeading();
 
     new Setting(containerEl)
       .setName('Mostrar título principal')
@@ -187,7 +198,9 @@ export class PdfExportSettingTab extends PluginSettingTab {
       });
 
     // --- SECCIÓN: TEMA Y APARIENCIA ---
-    containerEl.createEl('h3', { text: '🎨 Tema y Visualización' });
+    new Setting(containerEl)
+      .setName('🎨 Tema y Visualización')
+      .setHeading();
 
     new Setting(containerEl)
       .setName('Tema de color')

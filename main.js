@@ -69,7 +69,7 @@ var PdfExportSettingTab = class extends import_obsidian.PluginSettingTab {
   display() {
     const { containerEl } = this;
     containerEl.empty();
-    containerEl.createEl("h2", { text: "Complete PDF Export \u2014 Configuraci\xF3n" });
+    new import_obsidian.Setting(containerEl).setName("Complete PDF Export \u2014 Configuraci\xF3n").setHeading();
     const introEl = containerEl.createDiv({ cls: "setting-item-description" });
     const p = introEl.createEl("p");
     p.createEl("strong", { text: "Complete PDF Export" });
@@ -78,13 +78,13 @@ var PdfExportSettingTab = class extends import_obsidian.PluginSettingTab {
     p.appendText(" y ");
     p.createEl("strong", { text: "f\xF3rmulas matem\xE1ticas renderizadas en LaTeX" });
     p.appendText(", con total control sobre el tama\xF1o de hoja, orientaci\xF3n y dise\xF1o.");
-    containerEl.createEl("h3", { text: "\u2615 Apoyar el Proyecto" });
+    new import_obsidian.Setting(containerEl).setName("\u2615 Apoyar el Proyecto").setHeading();
     new import_obsidian.Setting(containerEl).setName("Puedes colaborar conmigo").setDesc("Si este plugin te resulta de utilidad para tu trabajo o estudio, puedes colaborar invit\xE1ndome un caf\xE9 para apoyar el desarrollo continuo.").addButton((button) => {
       button.setButtonText("\u2615 Invitar un caf\xE9 (Buy Me a Coffee)").setCta().onClick(() => {
         window.open("https://buymeacoffee.com/nicodx", "_blank");
       });
     });
-    containerEl.createEl("h3", { text: "\u{1F4C4} Formato de P\xE1gina" });
+    new import_obsidian.Setting(containerEl).setName("\u{1F4C4} Formato de P\xE1gina").setHeading();
     new import_obsidian.Setting(containerEl).setName("Tama\xF1o de papel").setDesc("Selecciona el tama\xF1o de hoja predeterminado para el PDF.").addDropdown((dropdown) => {
       dropdown.addOption("A4", "A4 (210 \xD7 297 mm)").addOption("Letter", "Carta / Letter (8.5 \xD7 11 pulg.)").addOption("Legal", "Oficio / Legal (8.5 \xD7 14 pulg.)").addOption("A3", "A3 (297 \xD7 420 mm)").addOption("A5", "A5 (148 \xD7 210 mm)").addOption("Executive", "Ejecutivo (7.25 \xD7 10.5 pulg.)").setValue(this.plugin.settings.pageSize).onChange(async (value) => {
         this.plugin.settings.pageSize = value;
@@ -103,7 +103,7 @@ var PdfExportSettingTab = class extends import_obsidian.PluginSettingTab {
         await this.plugin.saveSettings();
       });
     });
-    containerEl.createEl("h3", { text: "\u{1F9EE} F\xF3rmulas LaTeX y Propiedades" });
+    new import_obsidian.Setting(containerEl).setName("\u{1F9EE} F\xF3rmulas LaTeX y Propiedades").setHeading();
     new import_obsidian.Setting(containerEl).setName("Renderizar f\xF3rmulas LaTeX").setDesc("Convierte autom\xE1ticamente f\xF3rmulas $...$ (inline) y $$...$$ (bloque) usando KaTeX con fuentes vectoriales.").addToggle((toggle) => {
       toggle.setValue(this.plugin.settings.renderLatex).onChange(async (value) => {
         this.plugin.settings.renderLatex = value;
@@ -122,7 +122,7 @@ var PdfExportSettingTab = class extends import_obsidian.PluginSettingTab {
         await this.plugin.saveSettings();
       });
     });
-    containerEl.createEl("h3", { text: "\u{1F3F7}\uFE0F T\xEDtulo, Encabezado y Pie de P\xE1gina" });
+    new import_obsidian.Setting(containerEl).setName("\u{1F3F7}\uFE0F T\xEDtulo, Encabezado y Pie de P\xE1gina").setHeading();
     new import_obsidian.Setting(containerEl).setName("Mostrar t\xEDtulo principal").setDesc("Incluye el nombre de la nota como t\xEDtulo H1 al comienzo del documento.").addToggle((toggle) => {
       toggle.setValue(this.plugin.settings.showTitle).onChange(async (value) => {
         this.plugin.settings.showTitle = value;
@@ -147,7 +147,7 @@ var PdfExportSettingTab = class extends import_obsidian.PluginSettingTab {
         await this.plugin.saveSettings();
       });
     });
-    containerEl.createEl("h3", { text: "\u{1F3A8} Tema y Visualizaci\xF3n" });
+    new import_obsidian.Setting(containerEl).setName("\u{1F3A8} Tema y Visualizaci\xF3n").setHeading();
     new import_obsidian.Setting(containerEl).setName("Tema de color").setDesc("Tema de color para el documento PDF generado.").addDropdown((dropdown) => {
       dropdown.addOption("light", "Claro (\xD3ptimo para impresi\xF3n en papel)").addOption("dark", "Oscuro (Lectura digital)").addOption("sepia", "Sepia (Tono c\xE1lido)").setValue(this.plugin.settings.colorTheme).onChange(async (value) => {
         this.plugin.settings.colorTheme = value;
@@ -15506,10 +15506,10 @@ var path2 = __toESM(require("path"));
 var os = __toESM(require("os"));
 function getElectron() {
   try {
-    if (typeof window.require === "function") {
-      const electronRequire = window.require;
-      const electron = electronRequire("electron");
-      return electron || null;
+    const customWindow = window;
+    if (typeof customWindow.require === "function") {
+      const electronModule = customWindow.require("electron");
+      return electronModule || null;
     }
   } catch (err) {
     console.error("No se pudo cargar Electron:", err);
@@ -15549,11 +15549,12 @@ async function exportNoteToPdfFile(app, file, options, excludedProperties, custo
   try {
     let outputPath = customOutputPath;
     if (!outputPath) {
-      outputPath = await promptSavePath(app, file);
-      if (!outputPath) {
+      const prompted = await promptSavePath(app, file);
+      if (!prompted) {
         notice.hide();
         return null;
       }
+      outputPath = prompted;
     }
     const fullHtml = await renderNoteToFullHtml(app, file, options, excludedProperties);
     const tempDir = os.tmpdir();
@@ -15639,7 +15640,7 @@ async function exportNoteToPdfFile(app, file, options, excludedProperties, custo
   }
 }
 function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 function escapeHtml4(text2) {
   return text2.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
@@ -15813,11 +15814,15 @@ var ObsidianPdfExportPlugin = class extends import_obsidian5.Plugin {
     );
     this.addSettingTab(new PdfExportSettingTab(this.app, this));
   }
-  async onunload() {
+  onunload() {
   }
   async loadSettings() {
     const data = await this.loadData();
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, data);
+    if (data && typeof data === "object") {
+      this.settings = Object.assign({}, DEFAULT_SETTINGS, data);
+    } else {
+      this.settings = Object.assign({}, DEFAULT_SETTINGS);
+    }
   }
   async saveSettings() {
     await this.saveData(this.settings);

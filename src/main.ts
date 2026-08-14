@@ -77,13 +77,17 @@ export default class ObsidianPdfExportPlugin extends Plugin {
     this.addSettingTab(new PdfExportSettingTab(this.app, this));
   }
 
-  async onunload(): Promise<void> {
+  onunload(): void {
     // Limpieza si fuera necesaria
   }
 
   async loadSettings(): Promise<void> {
-    const data = await this.loadData();
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, data);
+    const data: unknown = await this.loadData();
+    if (data && typeof data === 'object') {
+      this.settings = Object.assign({}, DEFAULT_SETTINGS, data as Partial<PluginSettings>);
+    } else {
+      this.settings = Object.assign({}, DEFAULT_SETTINGS);
+    }
   }
 
   async saveSettings(): Promise<void> {
