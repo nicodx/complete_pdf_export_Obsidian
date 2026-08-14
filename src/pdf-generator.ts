@@ -10,31 +10,38 @@ interface ElectronDialogResult {
   filePath?: string;
 }
 
-interface ElectronModule {
-  dialog?: {
-    showSaveDialog(options: Record<string, unknown>): Promise<ElectronDialogResult>;
-  };
-  BrowserWindow?: new (options: Record<string, unknown>) => ElectronBrowserWindow;
-  shell?: {
-    openPath(path: string): Promise<string>;
-  };
+interface ElectronDialog {
+  showSaveDialog(options: Record<string, unknown>): Promise<ElectronDialogResult>;
+}
+
+interface ElectronWebContents {
+  executeJavaScript(code: string): Promise<unknown>;
+  printToPDF(options: Record<string, unknown>): Promise<Uint8Array>;
 }
 
 interface ElectronBrowserWindow {
   loadFile(filePath: string): Promise<void>;
-  webContents: {
-    executeJavaScript(code: string): Promise<unknown>;
-    printToPDF(options: Record<string, unknown>): Promise<Uint8Array>;
-  };
+  webContents: ElectronWebContents;
   destroy(): void;
+}
+
+interface ElectronShell {
+  openPath(path: string): Promise<string>;
+}
+
+interface ElectronModule {
+  dialog?: ElectronDialog;
+  BrowserWindow?: new (options: Record<string, unknown>) => ElectronBrowserWindow;
+  shell?: ElectronShell;
 }
 
 function getElectron(): ElectronModule | null {
   try {
-    const customWindow = window as unknown as { require?: (moduleName: string) => unknown };
-    if (typeof customWindow.require === 'function') {
-      const electronModule = customWindow.require('electron') as ElectronModule;
-      return electronModule || null;
+    const customWindow: Record<string, unknown> = window as unknown as Record<string, unknown>;
+    const requireFn: unknown = customWindow['require'];
+    if (typeof requireFn === 'function') {
+      const electron: ElectronModule = (requireFn as (moduleName: string) => ElectronModule)('electron');
+      return electron || null;
     }
   } catch (err: unknown) {
     console.error('No se pudo cargar Electron:', err);
@@ -43,7 +50,7 @@ function getElectron(): ElectronModule | null {
 }
 
 export function getVaultBasePath(app: App): string {
-  const adapter = app.vault.adapter;
+  const adapter: unknown = app.vault.adapter;
   if (adapter instanceof FileSystemAdapter) {
     return adapter.getBasePath();
   }
@@ -59,7 +66,8 @@ export async function promptSavePath(app: App, file: TFile, defaultDir?: string)
     // Fallback: guardar en la misma carpeta que la nota
     const vaultPath: string = getVaultBasePath(app);
     const folder: string = file.parent ? file.parent.path : '';
-    return path.join(vaultPath, folder, `${file.basename}.pdf`);
+    const fallbackPath: string = path.join(vaultPath, folder, `${file.basename}.pdf`);
+    return String(fallbackPath);
   }
 
   const initialDir: string = defaultDir && fs.existsSync(defaultDir)
@@ -80,7 +88,7 @@ export async function promptSavePath(app: App, file: TFile, defaultDir?: string)
     return null;
   }
 
-  return result.filePath;
+  return String(result.filePath);
 }
 
 /**
@@ -160,18 +168,18 @@ export async function exportNoteToPdfFile(
       };
 
       if (options.scalePercent && options.scalePercent !== 100) {
-        printOptions.scale = options.scalePercent / 100;
+        printOptions['scale'] = options.scalePercent / 100;
       }
 
       // Encabezados y pies de página si están configurados
       if (options.showPageNumbers || options.headerText || options.footerText) {
-        printOptions.displayHeaderFooter = true;
-        printOptions.headerTemplate = `
+        printOptions['displayHeaderFooter'] = true;
+        printOptions['headerTemplate'] = `
           <div style="font-size: 8px; width: 100%; text-align: right; padding: 0 20px; color: #888;">
             <span>${escapeHtml(options.headerText || '')}</span>
           </div>
         `;
-        printOptions.footerTemplate = `
+        printOptions['footerTemplate'] = `
           <div style="font-size: 8px; width: 100%; display: flex; justify-content: space-between; padding: 0 20px; color: #888;">
             <span>${escapeHtml(options.footerText || '')}</span>
             ${options.showPageNumbers ? '<span>Pág. <span class="pageNumber"></span> de <span class="totalPages"></span></span>' : ''}
@@ -196,7 +204,7 @@ export async function exportNoteToPdfFile(
 
       notice.hide();
       new Notice(`✅ PDF exportado con éxito: ${path.basename(outputPath)}`, 5000);
-      return outputPath;
+      return String(outputPath);
 
     } finally {
       win.destroy();

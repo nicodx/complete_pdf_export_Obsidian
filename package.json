@@ -27,6 +27,6 @@
     "typescript": "^5.3.3"
   },
   "dependencies": {
-    "katex": "^0.16.9"
+    "katex": "0.16.9"
   }
 }

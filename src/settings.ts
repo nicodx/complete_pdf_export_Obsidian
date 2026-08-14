@@ -15,7 +15,7 @@ export class PdfExportSettingTab extends PluginSettingTab {
     containerEl.empty();
 
     new Setting(containerEl)
-      .setName('Complete PDF Export — Configuración')
+      .setName('Configuración general')
       .setHeading();
 
     const introEl = containerEl.createDiv({ cls: 'setting-item-description' });

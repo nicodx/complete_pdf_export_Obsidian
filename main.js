@@ -69,7 +69,7 @@ var PdfExportSettingTab = class extends import_obsidian.PluginSettingTab {
   display() {
     const { containerEl } = this;
     containerEl.empty();
-    new import_obsidian.Setting(containerEl).setName("Complete PDF Export \u2014 Configuraci\xF3n").setHeading();
+    new import_obsidian.Setting(containerEl).setName("Configuraci\xF3n general").setHeading();
     const introEl = containerEl.createDiv({ cls: "setting-item-description" });
     const p = introEl.createEl("p");
     p.createEl("strong", { text: "Complete PDF Export" });
@@ -15507,9 +15507,10 @@ var os = __toESM(require("os"));
 function getElectron() {
   try {
     const customWindow = window;
-    if (typeof customWindow.require === "function") {
-      const electronModule = customWindow.require("electron");
-      return electronModule || null;
+    const requireFn = customWindow["require"];
+    if (typeof requireFn === "function") {
+      const electron = requireFn("electron");
+      return electron || null;
     }
   } catch (err) {
     console.error("No se pudo cargar Electron:", err);
@@ -15528,7 +15529,8 @@ async function promptSavePath(app, file, defaultDir) {
   if (!electron || !electron.dialog) {
     const vaultPath = getVaultBasePath(app);
     const folder = file.parent ? file.parent.path : "";
-    return path2.join(vaultPath, folder, `${file.basename}.pdf`);
+    const fallbackPath = path2.join(vaultPath, folder, `${file.basename}.pdf`);
+    return String(fallbackPath);
   }
   const initialDir = defaultDir && fs.existsSync(defaultDir) ? defaultDir : path2.join(getVaultBasePath(app), file.parent ? file.parent.path : "");
   const defaultPath = path2.join(initialDir, `${file.basename}.pdf`);
@@ -15542,7 +15544,7 @@ async function promptSavePath(app, file, defaultDir) {
   if (result.canceled || !result.filePath) {
     return null;
   }
-  return result.filePath;
+  return String(result.filePath);
 }
 async function exportNoteToPdfFile(app, file, options, excludedProperties, customOutputPath) {
   const notice = new import_obsidian3.Notice("Generando PDF con f\xF3rmulas LaTeX...", 0);
@@ -15595,16 +15597,16 @@ async function exportNoteToPdfFile(app, file, options, excludedProperties, custo
         }
       };
       if (options.scalePercent && options.scalePercent !== 100) {
-        printOptions.scale = options.scalePercent / 100;
+        printOptions["scale"] = options.scalePercent / 100;
       }
       if (options.showPageNumbers || options.headerText || options.footerText) {
-        printOptions.displayHeaderFooter = true;
-        printOptions.headerTemplate = `
+        printOptions["displayHeaderFooter"] = true;
+        printOptions["headerTemplate"] = `
           <div style="font-size: 8px; width: 100%; text-align: right; padding: 0 20px; color: #888;">
             <span>${escapeHtml4(options.headerText || "")}</span>
           </div>
         `;
-        printOptions.footerTemplate = `
+        printOptions["footerTemplate"] = `
           <div style="font-size: 8px; width: 100%; display: flex; justify-content: space-between; padding: 0 20px; color: #888;">
             <span>${escapeHtml4(options.footerText || "")}</span>
             ${options.showPageNumbers ? '<span>P\xE1g. <span class="pageNumber"></span> de <span class="totalPages"></span></span>' : ""}
@@ -15622,7 +15624,7 @@ async function exportNoteToPdfFile(app, file, options, excludedProperties, custo
       }
       notice.hide();
       new import_obsidian3.Notice(`\u2705 PDF exportado con \xE9xito: ${path2.basename(outputPath)}`, 5e3);
-      return outputPath;
+      return String(outputPath);
     } finally {
       win.destroy();
       try {
