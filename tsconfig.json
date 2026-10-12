@@ -4,6 +4,8 @@
     "inlineSources": true,
     "sourceMap": true,
     "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
     "module": "ESNext",
     "target": "ES6",
     "allowJs": true,
