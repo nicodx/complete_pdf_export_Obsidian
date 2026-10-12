@@ -56,6 +56,196 @@ var PdfExportSettingTab = class extends import_obsidian.PluginSettingTab {
     super(app, plugin);
     this.plugin = plugin;
   }
+  /**
+   * Declarative settings definition API (introduced in Obsidian 1.13.0).
+   * Enables settings search indexing and declarative UI rendering.
+   */
+  getSettingDefinitions() {
+    return [
+      {
+        type: "group",
+        heading: "Apoyar el proyecto",
+        items: [
+          {
+            name: "Puedes colaborar conmigo",
+            desc: "Si este plugin te resulta de utilidad para tu trabajo o estudio, puedes colaborar invit\xE1ndome un caf\xE9 para apoyar el desarrollo continuo.",
+            render: (setting) => {
+              setting.addButton((button) => {
+                button.setButtonText("\u2615 Invitar un caf\xE9 (Buy Me a Coffee)").setCta().onClick(() => {
+                  window.open("https://buymeacoffee.com/nicodx", "_blank");
+                });
+              });
+            }
+          }
+        ]
+      },
+      {
+        type: "group",
+        heading: "Formato de p\xE1gina",
+        items: [
+          {
+            name: "Tama\xF1o de papel",
+            desc: "Selecciona el tama\xF1o de hoja predeterminado para el PDF.",
+            control: {
+              type: "dropdown",
+              key: "pageSize",
+              options: {
+                A4: "A4 (210 \xD7 297 mm)",
+                Letter: "Carta / Letter (8.5 \xD7 11 pulg.)",
+                Legal: "Oficio / Legal (8.5 \xD7 14 pulg.)",
+                A3: "A3 (297 \xD7 420 mm)",
+                A5: "A5 (148 \xD7 210 mm)",
+                Executive: "Ejecutivo (7.25 \xD7 10.5 pulg.)"
+              }
+            }
+          },
+          {
+            name: "Orientaci\xF3n de la p\xE1gina",
+            desc: "Elige si la hoja debe ser vertical (portrait) u horizontal (landscape).",
+            control: {
+              type: "dropdown",
+              key: "pageOrientation",
+              options: {
+                portrait: "Vertical (Portrait)",
+                landscape: "Horizontal (Landscape)"
+              }
+            }
+          },
+          {
+            name: "M\xE1rgenes de p\xE1gina",
+            desc: "Espacio alrededor del contenido en cada hoja.",
+            control: {
+              type: "dropdown",
+              key: "margins",
+              options: {
+                default: "Est\xE1ndar (20 mm)",
+                narrow: "Estrecho / Compacto (10 mm)",
+                wide: "Amplio (30 mm)",
+                none: "Sin m\xE1rgenes (0 mm)"
+              }
+            }
+          }
+        ]
+      },
+      {
+        type: "group",
+        heading: "F\xF3rmulas LaTeX y propiedades",
+        items: [
+          {
+            name: "Renderizar f\xF3rmulas LaTeX",
+            desc: "Convierte autom\xE1ticamente f\xF3rmulas $...$ (inline) y $$...$$ (bloque) usando KaTeX con fuentes vectoriales.",
+            control: {
+              type: "toggle",
+              key: "renderLatex"
+            }
+          },
+          {
+            name: "Incluir propiedades de la nota (Frontmatter)",
+            desc: "Muestra una tarjeta estilizada con las propiedades (metadatos, tags, fechas, autor) al inicio del PDF.",
+            control: {
+              type: "toggle",
+              key: "showProperties"
+            }
+          },
+          {
+            name: "Propiedades a excluir",
+            desc: "Nombres de propiedades a ocultar del PDF, separados por comas (ejemplo: cssclasses, publish, draft).",
+            control: {
+              type: "text",
+              key: "excludedProperties",
+              placeholder: "cssclasses, publish, draft"
+            }
+          }
+        ]
+      },
+      {
+        type: "group",
+        heading: "T\xEDtulo, encabezado y pie de p\xE1gina",
+        items: [
+          {
+            name: "Mostrar t\xEDtulo principal",
+            desc: "Incluye el nombre de la nota como t\xEDtulo H1 al comienzo del documento.",
+            control: {
+              type: "toggle",
+              key: "showTitle"
+            }
+          },
+          {
+            name: "Mostrar numeraci\xF3n de p\xE1ginas",
+            desc: 'Agrega "P\xE1g. X de Y" en el pie de p\xE1gina del PDF.',
+            control: {
+              type: "toggle",
+              key: "showPageNumbers"
+            }
+          },
+          {
+            name: "Texto personalizado en encabezado",
+            desc: "Texto opcional que aparecer\xE1 en la parte superior derecha de cada p\xE1gina.",
+            control: {
+              type: "text",
+              key: "headerText",
+              placeholder: "Ej: Confidencial / Documento de estudio"
+            }
+          },
+          {
+            name: "Texto personalizado en pie de p\xE1gina",
+            desc: "Texto opcional que aparecer\xE1 en la parte inferior izquierda de cada p\xE1gina.",
+            control: {
+              type: "text",
+              key: "footerText",
+              placeholder: "Ej: Autor / Proyecto"
+            }
+          }
+        ]
+      },
+      {
+        type: "group",
+        heading: "Tema y visualizaci\xF3n",
+        items: [
+          {
+            name: "Tema de color",
+            desc: "Tema de color para el documento PDF generado.",
+            control: {
+              type: "dropdown",
+              key: "colorTheme",
+              options: {
+                light: "Claro (\xD3ptimo para impresi\xF3n en papel)",
+                dark: "Oscuro (Lectura digital)",
+                sepia: "Sepia (Tono c\xE1lido)"
+              }
+            }
+          },
+          {
+            name: "Abrir PDF autom\xE1ticamente",
+            desc: "Abre el PDF en el visor predeterminado del sistema una vez exportado.",
+            control: {
+              type: "toggle",
+              key: "openPdfAfterExport"
+            }
+          }
+        ]
+      }
+    ];
+  }
+  getControlValue(key) {
+    if (key === "excludedProperties") {
+      return this.plugin.settings.excludedProperties.join(", ");
+    }
+    return this.plugin.settings[key];
+  }
+  async setControlValue(key, value) {
+    if (key === "excludedProperties") {
+      const raw = typeof value === "string" ? value : "";
+      this.plugin.settings.excludedProperties = raw.split(",").map((p) => p.trim()).filter((p) => p.length > 0);
+      await this.plugin.saveSettings();
+      return;
+    }
+    this.plugin.settings[key] = value;
+    await this.plugin.saveSettings();
+  }
+  /**
+   * Fallback imperative display method for Obsidian versions older than 1.13.0.
+   */
   display() {
     const { containerEl } = this;
     containerEl.empty();
@@ -67,20 +257,20 @@ var PdfExportSettingTab = class extends import_obsidian.PluginSettingTab {
     p.appendText(" y ");
     p.createEl("strong", { text: "f\xF3rmulas matem\xE1ticas renderizadas en LaTeX" });
     p.appendText(", con total control sobre el tama\xF1o de hoja, orientaci\xF3n y dise\xF1o.");
-    new import_obsidian.Setting(containerEl).setName("\u2615 Apoyar el Proyecto").setHeading();
+    containerEl.createEl("h3", { text: "\u2615 Apoyar el proyecto" });
     new import_obsidian.Setting(containerEl).setName("Puedes colaborar conmigo").setDesc("Si este plugin te resulta de utilidad para tu trabajo o estudio, puedes colaborar invit\xE1ndome un caf\xE9 para apoyar el desarrollo continuo.").addButton((button) => {
       button.setButtonText("\u2615 Invitar un caf\xE9 (Buy Me a Coffee)").setCta().onClick(() => {
         window.open("https://buymeacoffee.com/nicodx", "_blank");
       });
     });
-    new import_obsidian.Setting(containerEl).setName("\u{1F4C4} Formato de P\xE1gina").setHeading();
+    containerEl.createEl("h3", { text: "\u{1F4C4} Formato de p\xE1gina" });
     new import_obsidian.Setting(containerEl).setName("Tama\xF1o de papel").setDesc("Selecciona el tama\xF1o de hoja predeterminado para el PDF.").addDropdown((dropdown) => {
       dropdown.addOption("A4", "A4 (210 \xD7 297 mm)").addOption("Letter", "Carta / Letter (8.5 \xD7 11 pulg.)").addOption("Legal", "Oficio / Legal (8.5 \xD7 14 pulg.)").addOption("A3", "A3 (297 \xD7 420 mm)").addOption("A5", "A5 (148 \xD7 210 mm)").addOption("Executive", "Ejecutivo (7.25 \xD7 10.5 pulg.)").setValue(this.plugin.settings.pageSize).onChange(async (value) => {
         this.plugin.settings.pageSize = value;
         await this.plugin.saveSettings();
       });
     });
-    new import_obsidian.Setting(containerEl).setName("Orientaci\xF3n de la p\xE1gina").setDesc("Elige si la hoja debe ser Vertical (Portrait) u Horizontal (Landscape).").addDropdown((dropdown) => {
+    new import_obsidian.Setting(containerEl).setName("Orientaci\xF3n de la p\xE1gina").setDesc("Elige si la hoja debe ser vertical (portrait) u horizontal (landscape).").addDropdown((dropdown) => {
       dropdown.addOption("portrait", "Vertical (Portrait)").addOption("landscape", "Horizontal (Landscape)").setValue(this.plugin.settings.pageOrientation).onChange(async (value) => {
         this.plugin.settings.pageOrientation = value;
         await this.plugin.saveSettings();
@@ -92,7 +282,7 @@ var PdfExportSettingTab = class extends import_obsidian.PluginSettingTab {
         await this.plugin.saveSettings();
       });
     });
-    new import_obsidian.Setting(containerEl).setName("\u{1F9EE} F\xF3rmulas LaTeX y Propiedades").setHeading();
+    containerEl.createEl("h3", { text: "\u{1F9EE} F\xF3rmulas LaTeX y propiedades" });
     new import_obsidian.Setting(containerEl).setName("Renderizar f\xF3rmulas LaTeX").setDesc("Convierte autom\xE1ticamente f\xF3rmulas $...$ (inline) y $$...$$ (bloque) usando KaTeX con fuentes vectoriales.").addToggle((toggle) => {
       toggle.setValue(this.plugin.settings.renderLatex).onChange(async (value) => {
         this.plugin.settings.renderLatex = value;
@@ -111,7 +301,7 @@ var PdfExportSettingTab = class extends import_obsidian.PluginSettingTab {
         await this.plugin.saveSettings();
       });
     });
-    new import_obsidian.Setting(containerEl).setName("\u{1F3F7}\uFE0F T\xEDtulo, Encabezado y Pie de P\xE1gina").setHeading();
+    containerEl.createEl("h3", { text: "\u{1F3F7}\uFE0F T\xEDtulo, encabezado y pie de p\xE1gina" });
     new import_obsidian.Setting(containerEl).setName("Mostrar t\xEDtulo principal").setDesc("Incluye el nombre de la nota como t\xEDtulo H1 al comienzo del documento.").addToggle((toggle) => {
       toggle.setValue(this.plugin.settings.showTitle).onChange(async (value) => {
         this.plugin.settings.showTitle = value;
@@ -125,7 +315,7 @@ var PdfExportSettingTab = class extends import_obsidian.PluginSettingTab {
       });
     });
     new import_obsidian.Setting(containerEl).setName("Texto personalizado en encabezado").setDesc("Texto opcional que aparecer\xE1 en la parte superior derecha de cada p\xE1gina.").addText((text2) => {
-      text2.setPlaceholder("Ej: Confidencial / Documento de Estudio").setValue(this.plugin.settings.headerText).onChange(async (value) => {
+      text2.setPlaceholder("Ej: Confidencial / Documento de estudio").setValue(this.plugin.settings.headerText).onChange(async (value) => {
         this.plugin.settings.headerText = value;
         await this.plugin.saveSettings();
       });
@@ -136,7 +326,7 @@ var PdfExportSettingTab = class extends import_obsidian.PluginSettingTab {
         await this.plugin.saveSettings();
       });
     });
-    new import_obsidian.Setting(containerEl).setName("\u{1F3A8} Tema y Visualizaci\xF3n").setHeading();
+    containerEl.createEl("h3", { text: "\u{1F3A8} Tema y visualizaci\xF3n" });
     new import_obsidian.Setting(containerEl).setName("Tema de color").setDesc("Tema de color para el documento PDF generado.").addDropdown((dropdown) => {
       dropdown.addOption("light", "Claro (\xD3ptimo para impresi\xF3n en papel)").addOption("dark", "Oscuro (Lectura digital)").addOption("sepia", "Sepia (Tono c\xE1lido)").setValue(this.plugin.settings.colorTheme).onChange(async (value) => {
         this.plugin.settings.colorTheme = value;

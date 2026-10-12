@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Setting } from 'obsidian';
+import { App, PluginSettingTab, Setting, SettingDefinitionItem } from 'obsidian';
 import type ObsidianPdfExportPlugin from './main';
 import { ColorTheme, MarginOption, PageOrientation, PageSize } from './types';
 
@@ -10,6 +10,205 @@ export class PdfExportSettingTab extends PluginSettingTab {
     this.plugin = plugin;
   }
 
+  /**
+   * Declarative settings definition API (introduced in Obsidian 1.13.0).
+   * Enables settings search indexing and declarative UI rendering.
+   */
+  getSettingDefinitions(): SettingDefinitionItem[] {
+    return [
+      {
+        type: 'group',
+        heading: 'Apoyar el proyecto',
+        items: [
+          {
+            name: 'Puedes colaborar conmigo',
+            desc: 'Si este plugin te resulta de utilidad para tu trabajo o estudio, puedes colaborar invitándome un café para apoyar el desarrollo continuo.',
+            render: (setting: Setting) => {
+              setting.addButton(button => {
+                button
+                  .setButtonText('☕ Invitar un café (Buy Me a Coffee)')
+                  .setCta()
+                  .onClick(() => {
+                    window.open('https://buymeacoffee.com/nicodx', '_blank');
+                  });
+              });
+            }
+          }
+        ]
+      },
+      {
+        type: 'group',
+        heading: 'Formato de página',
+        items: [
+          {
+            name: 'Tamaño de papel',
+            desc: 'Selecciona el tamaño de hoja predeterminado para el PDF.',
+            control: {
+              type: 'dropdown',
+              key: 'pageSize',
+              options: {
+                A4: 'A4 (210 × 297 mm)',
+                Letter: 'Carta / Letter (8.5 × 11 pulg.)',
+                Legal: 'Oficio / Legal (8.5 × 14 pulg.)',
+                A3: 'A3 (297 × 420 mm)',
+                A5: 'A5 (148 × 210 mm)',
+                Executive: 'Ejecutivo (7.25 × 10.5 pulg.)'
+              }
+            }
+          },
+          {
+            name: 'Orientación de la página',
+            desc: 'Elige si la hoja debe ser vertical (portrait) u horizontal (landscape).',
+            control: {
+              type: 'dropdown',
+              key: 'pageOrientation',
+              options: {
+                portrait: 'Vertical (Portrait)',
+                landscape: 'Horizontal (Landscape)'
+              }
+            }
+          },
+          {
+            name: 'Márgenes de página',
+            desc: 'Espacio alrededor del contenido en cada hoja.',
+            control: {
+              type: 'dropdown',
+              key: 'margins',
+              options: {
+                default: 'Estándar (20 mm)',
+                narrow: 'Estrecho / Compacto (10 mm)',
+                wide: 'Amplio (30 mm)',
+                none: 'Sin márgenes (0 mm)'
+              }
+            }
+          }
+        ]
+      },
+      {
+        type: 'group',
+        heading: 'Fórmulas LaTeX y propiedades',
+        items: [
+          {
+            name: 'Renderizar fórmulas LaTeX',
+            desc: 'Convierte automáticamente fórmulas $...$ (inline) y $$...$$ (bloque) usando KaTeX con fuentes vectoriales.',
+            control: {
+              type: 'toggle',
+              key: 'renderLatex'
+            }
+          },
+          {
+            name: 'Incluir propiedades de la nota (Frontmatter)',
+            desc: 'Muestra una tarjeta estilizada con las propiedades (metadatos, tags, fechas, autor) al inicio del PDF.',
+            control: {
+              type: 'toggle',
+              key: 'showProperties'
+            }
+          },
+          {
+            name: 'Propiedades a excluir',
+            desc: 'Nombres de propiedades a ocultar del PDF, separados por comas (ejemplo: cssclasses, publish, draft).',
+            control: {
+              type: 'text',
+              key: 'excludedProperties',
+              placeholder: 'cssclasses, publish, draft'
+            }
+          }
+        ]
+      },
+      {
+        type: 'group',
+        heading: 'Título, encabezado y pie de página',
+        items: [
+          {
+            name: 'Mostrar título principal',
+            desc: 'Incluye el nombre de la nota como título H1 al comienzo del documento.',
+            control: {
+              type: 'toggle',
+              key: 'showTitle'
+            }
+          },
+          {
+            name: 'Mostrar numeración de páginas',
+            desc: 'Agrega "Pág. X de Y" en el pie de página del PDF.',
+            control: {
+              type: 'toggle',
+              key: 'showPageNumbers'
+            }
+          },
+          {
+            name: 'Texto personalizado en encabezado',
+            desc: 'Texto opcional que aparecerá en la parte superior derecha de cada página.',
+            control: {
+              type: 'text',
+              key: 'headerText',
+              placeholder: 'Ej: Confidencial / Documento de estudio'
+            }
+          },
+          {
+            name: 'Texto personalizado en pie de página',
+            desc: 'Texto opcional que aparecerá en la parte inferior izquierda de cada página.',
+            control: {
+              type: 'text',
+              key: 'footerText',
+              placeholder: 'Ej: Autor / Proyecto'
+            }
+          }
+        ]
+      },
+      {
+        type: 'group',
+        heading: 'Tema y visualización',
+        items: [
+          {
+            name: 'Tema de color',
+            desc: 'Tema de color para el documento PDF generado.',
+            control: {
+              type: 'dropdown',
+              key: 'colorTheme',
+              options: {
+                light: 'Claro (Óptimo para impresión en papel)',
+                dark: 'Oscuro (Lectura digital)',
+                sepia: 'Sepia (Tono cálido)'
+              }
+            }
+          },
+          {
+            name: 'Abrir PDF automáticamente',
+            desc: 'Abre el PDF en el visor predeterminado del sistema una vez exportado.',
+            control: {
+              type: 'toggle',
+              key: 'openPdfAfterExport'
+            }
+          }
+        ]
+      }
+    ];
+  }
+
+  getControlValue(key: string): unknown {
+    if (key === 'excludedProperties') {
+      return this.plugin.settings.excludedProperties.join(', ');
+    }
+    return (this.plugin.settings as unknown as Record<string, unknown>)[key];
+  }
+
+  async setControlValue(key: string, value: unknown): Promise<void> {
+    if (key === 'excludedProperties') {
+      const raw = typeof value === 'string' ? value : '';
+      this.plugin.settings.excludedProperties = raw
+        .split(',')
+        .map(p => p.trim())
+        .filter(p => p.length > 0);
+      await this.plugin.saveSettings();
+      return;
+    }
+    (this.plugin.settings as unknown as Record<string, unknown>)[key] = value;
+    await this.plugin.saveSettings();
+  }
+
+  /**
+   * Fallback imperative display method for Obsidian versions older than 1.13.0.
+   */
   display(): void {
     const { containerEl } = this;
     containerEl.empty();
@@ -24,10 +223,7 @@ export class PdfExportSettingTab extends PluginSettingTab {
     p.appendText(', con total control sobre el tamaño de hoja, orientación y diseño.');
 
     // --- SECCIÓN: COLABORAR / BUY ME A COFFEE ---
-    new Setting(containerEl)
-      .setName('☕ Apoyar el Proyecto')
-      .setHeading();
-
+    containerEl.createEl('h3', { text: '☕ Apoyar el proyecto' });
     new Setting(containerEl)
       .setName('Puedes colaborar conmigo')
       .setDesc('Si este plugin te resulta de utilidad para tu trabajo o estudio, puedes colaborar invitándome un café para apoyar el desarrollo continuo.')
@@ -41,9 +237,7 @@ export class PdfExportSettingTab extends PluginSettingTab {
       });
 
     // --- SECCIÓN: FORMATO DE PÁGINA ---
-    new Setting(containerEl)
-      .setName('📄 Formato de Página')
-      .setHeading();
+    containerEl.createEl('h3', { text: '📄 Formato de página' });
 
     new Setting(containerEl)
       .setName('Tamaño de papel')
@@ -65,7 +259,7 @@ export class PdfExportSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName('Orientación de la página')
-      .setDesc('Elige si la hoja debe ser Vertical (Portrait) u Horizontal (Landscape).')
+      .setDesc('Elige si la hoja debe ser vertical (portrait) u horizontal (landscape).')
       .addDropdown(dropdown => {
         dropdown
           .addOption('portrait', 'Vertical (Portrait)')
@@ -94,9 +288,7 @@ export class PdfExportSettingTab extends PluginSettingTab {
       });
 
     // --- SECCIÓN: CONTENIDO Y FÓRMULAS ---
-    new Setting(containerEl)
-      .setName('🧮 Fórmulas LaTeX y Propiedades')
-      .setHeading();
+    containerEl.createEl('h3', { text: '🧮 Fórmulas LaTeX y propiedades' });
 
     new Setting(containerEl)
       .setName('Renderizar fórmulas LaTeX')
@@ -139,9 +331,7 @@ export class PdfExportSettingTab extends PluginSettingTab {
       });
 
     // --- SECCIÓN: ENCABEZADOS Y PIE DE PÁGINA ---
-    new Setting(containerEl)
-      .setName('🏷️ Título, Encabezado y Pie de Página')
-      .setHeading();
+    containerEl.createEl('h3', { text: '🏷️ Título, encabezado y pie de página' });
 
     new Setting(containerEl)
       .setName('Mostrar título principal')
@@ -172,7 +362,7 @@ export class PdfExportSettingTab extends PluginSettingTab {
       .setDesc('Texto opcional que aparecerá en la parte superior derecha de cada página.')
       .addText(text => {
         text
-          .setPlaceholder('Ej: Confidencial / Documento de Estudio')
+          .setPlaceholder('Ej: Confidencial / Documento de estudio')
           .setValue(this.plugin.settings.headerText)
           .onChange(async (value: string) => {
             this.plugin.settings.headerText = value;
@@ -194,9 +384,7 @@ export class PdfExportSettingTab extends PluginSettingTab {
       });
 
     // --- SECCIÓN: TEMA Y APARIENCIA ---
-    new Setting(containerEl)
-      .setName('🎨 Tema y Visualización')
-      .setHeading();
+    containerEl.createEl('h3', { text: '🎨 Tema y visualización' });
 
     new Setting(containerEl)
       .setName('Tema de color')

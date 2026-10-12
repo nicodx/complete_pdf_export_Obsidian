@@ -2,6 +2,8 @@
   "compilerOptions": {
     "baseUrl": ".",
     "inlineSources": true,
+    "sourceMap": true,
+    "skipLibCheck": true,
     "module": "ESNext",
     "target": "ES6",
     "allowJs": true,
@@ -23,6 +25,6 @@
     ]
   },
   "include": [
-    "**/*.ts"
+    "src/**/*.ts"
   ]
 }
